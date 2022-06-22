@@ -3,18 +3,23 @@ version: "3.9"
 services:
   # first service to build is mysql db
   mysql:
-#    # use pre built mysql image
+#    # use pre-built mysql image
 #    # mac: arm64v8/mysql:oracle
 #    # windows: mysql:latest
+    # image: arm64v8/mysql:oracle
     # build from dockerfile
     build:
-    # image: arm64v8/mysql:oracle
+      # context to build the image
+      # . means current folder of yaml file
       context: ./database
       dockerfile: Dockerfile
+    # restart set to always to restart container
+    # if it stops
+    restart:
+      always
     # specify env vars
     environment:
-#      - MYSQL_USER=root
-      - MYSQL_ROOT_PASSWORD=Ps11041987!
+      - MYSQL_ROOT_PASSWORD=password
       - MYSQL_DB=my_db
   # second service will be the api
   api:
@@ -30,10 +35,15 @@ services:
     # second port number should be the same as the port EXPOSE by Dockerfile
     ports:
       - "5000:5000"
+    # restart set to always to restart container
+    # if it stops
+    restart:
+      always
     # depends_on means that api depends on mysql
     # before it can start
     depends_on:
       - mysql
+    # specify env vars
     environment:
       - DB_IP=mysql
     # add entrypoint to overwrite cmd and entrypoint in Dockerfile
