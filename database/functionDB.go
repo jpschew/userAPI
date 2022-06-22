@@ -175,6 +175,52 @@ func GetAllTransactions(db *sql.DB, pageIndex int, recordsPerPage int) map[int]T
 	return transactions //, userTrans
 }
 
+func GetUserTransactionsByItem(db *sql.DB, pageIndex int, recordsPerPage int, userID int, item string) map[int][]Transactions {
+
+	var trans Transactions
+	//var id int
+
+	transactions := make(map[int][]Transactions)
+
+	query := fmt.Sprintf(`
+								SELECT t.id, u.id, u.name, t.trans_date, t.weight, i.name
+								FROM my_db.Users u
+								JOIN my_db.Transactions t
+								ON u.id = t.user_id
+								JOIN my_db.Items i
+								ON i.id = t.item_id
+								WHERE u.id = '%d' AND i.name = '%s'
+								ORDER BY t.id
+								LIMIT %d OFFSET %d
+								`, userID, item, recordsPerPage, pageIndex*recordsPerPage)
+
+	if results, err := db.Query(query); err != nil {
+		log.Panicln(err.Error())
+	} else {
+		for results.Next() {
+			// Scan() copy each row of data from db and assign to the address specified
+			err = results.Scan(&trans.TransID, &trans.UserID, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
+			//fmt.Println(user.ApiKey, "db")
+			//fmt.Println(input.ApiKey, "input")
+			if err != nil {
+				//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
+				log.Panicln(err.Error())
+
+			}
+
+			//if _, ok := transactions[trans.UserID]; !ok {
+			//	transactions[trans.UserID] = append(make([]Transactions, 0), trans)
+			//} else {
+			//	transactions[trans.UserID] = append(userTrans[trans.UserID], trans)
+			//}
+			//transactions[trans.userID] = trans
+			transactions[trans.UserID] = append(transactions[trans.UserID], trans)
+
+		}
+	}
+	return transactions
+}
+
 func GetUserTransactions(db *sql.DB, pageIndex int, recordsPerPage int, userID int) map[int][]Transactions {
 
 	var trans Transactions

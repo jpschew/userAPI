@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"userAPI/config"
 	"userAPI/database"
 )
@@ -449,6 +452,15 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 	// values will be a map
 	values := req.URL.Query()
 
+	if _, ok := values["page_index"]; !ok {
+		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be provided.", data)
+		return
+	}
+	if _, ok := values["records_per_page"]; !ok {
+		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be provided.", data)
+		return
+	}
+
 	page, records, valid := getQueryStrings(values)
 
 	if !valid {
@@ -482,20 +494,41 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 				badRequestStatusUser(res, false, "User id need to be integer.", data)
 				return
 			} else {
-				uTrans = database.GetUserTransactions(db, page, records, uID)
 
+				var msg string
+
+				if params["itemid"] != "" { // itemid exists in url
+
+					// convert to Title case
+					item := cases.Title(language.Und, cases.NoLower).String(strings.ToLower(params["itemid"]))
+					uTrans = database.GetUserTransactionsByItem(db, page, records, uID, item)
+					msg = fmt.Sprintf("Get %d %s transcations for userID %d.",
+						len(uTrans[uID]), item, uID)
+
+				} else { // itemid does not exists in url
+
+					uTrans = database.GetUserTransactions(db, page, records, uID)
+					msg = fmt.Sprintf("Get %d transcations for userID %d.",
+						len(uTrans[uID]), uID)
+
+				}
 				if _, ok := uTrans[uID]; !ok {
 					//if len(uTrans[uID]) == 0 {
 					if page == 0 { // if no offset and no transactions
-						notFoundStatusJSON(res, false, "No user transactions in database.",
-							make(map[string]interface{}))
+						msg = fmt.Sprintf("No transactions in database userID %d.",
+							uID)
+						//notFoundStatusJSON(res, false, msg,
+						//	make(map[string]interface{}))
 						//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
 					} else { // 1 or more
-						notFoundStatusJSON(res, false, "No more user transactions available in database.",
-							make(map[string]interface{}))
+						msg = fmt.Sprintf("No more transactions available in database userID %d.",
+							uID)
+						//notFoundStatusJSON(res, false, msg,
+						//	make(map[string]interface{}))
 						//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
 					}
-
+					notFoundStatusJSON(res, false, msg,
+						make(map[string]interface{}))
 					//} else {
 					//	notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
 					//}
@@ -516,8 +549,10 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 					//	}
 					//
 					//} else {
-					msg := fmt.Sprintf("Get %d transcations for userID %d.",
-						len(uTrans[uID]), uID)
+
+					//msg := fmt.Sprintf("Get %d transcations for userID %d.",
+					//	len(uTrans[uID]), uID)
+
 					//if (page*records)+1 == (page*records)+len(uTrans) {
 					//	msg = fmt.Sprintf("Get transaction id %d.", (page*records)+1)
 					//}
@@ -528,6 +563,7 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 					//res.WriteHeader(http.StatusAccepted)
 					//json.NewEncoder(res).Encode(uTrans[uID])
 				}
+
 			}
 
 		} else { // userid does not exist in url
@@ -582,6 +618,15 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 	// should have page_index and records_per_page
 	// values will be a map
 	values := req.URL.Query()
+
+	if _, ok := values["page_index"]; !ok {
+		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be provided.", data)
+		return
+	}
+	if _, ok := values["records_per_page"]; !ok {
+		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be provided.", data)
+		return
+	}
 
 	page, records, valid := getQueryStrings(values)
 

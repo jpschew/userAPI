@@ -29,12 +29,14 @@ func main() {
 	router.HandleFunc("/api/v1/redeemvoucher", api.RedeemVoucher).Methods("PUT")
 	// get all users
 	router.HandleFunc("/api/v1/getusers", api.GetAllUsers).Methods("GET")
-	router.HandleFunc("/api/v1/getusers/{userid}", api.GetAllUsers).Methods("GET")
+	//router.HandleFunc("/api/v1/getusers/{userid}", api.GetAllUsers).Methods("GET")
 
 	// get all transactions
 	router.HandleFunc("/api/v1/gettransactions", api.GetAllTransactions).Methods("GET")
 	// get user transactions
 	router.HandleFunc("/api/v1/gettransactions/{userid}", api.GetAllTransactions).Methods("GET")
+	// get user transactions filtered by item
+	router.HandleFunc("/api/v1/gettransactions/{userid}/{itemid}", api.GetAllTransactions).Methods("GET")
 
 	// route and handler functions for api key
 	router.HandleFunc("/api/v1/genkey", api.GenKey).Methods("GET")
