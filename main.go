@@ -13,9 +13,10 @@ func main() {
 
 	// route and handler functions for user profile
 	// without specifying the methods using .Method()
-	// it xwill accept all methods
+	// it will accept all methods
 	router.HandleFunc("/api/v1/", api.Home).Methods("GET")
-	// add/check exist user
+
+	// add user
 	router.HandleFunc("/api/v1/adduser", api.AddUser).Methods("POST")
 	// add transaction to user
 	router.HandleFunc("/api/v1/addtransaction", api.AddTransaction).Methods("POST")
@@ -27,20 +28,19 @@ func main() {
 	router.HandleFunc("/api/v1/checkvoucher", api.VoucherStatus).Methods("POST")
 	// redeem voucher of an user
 	router.HandleFunc("/api/v1/redeemvoucher", api.RedeemVoucher).Methods("PUT")
+
 	// get all users
 	router.HandleFunc("/api/v1/getusers", api.GetAllUsers).Methods("GET")
-	//router.HandleFunc("/api/v1/getusers/{userid}", api.GetAllUsers).Methods("GET")
-
 	// get all transactions
 	router.HandleFunc("/api/v1/gettransactions", api.GetAllTransactions).Methods("GET")
-	// get user transactions
+	// get all user transactions
 	router.HandleFunc("/api/v1/gettransactions/{userid}", api.GetAllTransactions).Methods("GET")
-	// get user transactions filtered by item
+	// get all user transactions filtered by item
 	router.HandleFunc("/api/v1/gettransactions/{userid}/{itemid}", api.GetAllTransactions).Methods("GET")
 
 	// route and handler functions for api key
+	// generate apikey to user
 	router.HandleFunc("/api/v1/genkey", api.GenKey).Methods("GET")
-
 	// add apikey to user
 	router.HandleFunc("/api/v1/addkey", api.AddUpdateKey).Methods("PUT")
 

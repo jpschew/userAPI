@@ -12,10 +12,9 @@ import (
 )
 
 type UserInfo struct {
-	UserID int
-	Phone  string
-	Name   string
-	//ApiKey    string
+	UserID    int
+	Phone     string
+	Name      string
 	Points    int
 	LastLogin time.Time
 }
@@ -29,15 +28,6 @@ type Transactions struct {
 	TransDate time.Time
 }
 
-//type UTransactions struct {
-//	UserID  int
-//	TransID int
-//	//Name      string
-//	Weight    int
-//	Item      string
-//	TransDate time.Time
-//}
-
 // CreateDBConn creates a connection to mysql database given the driver name, dsn and db name.
 func CreateDBConn(driver string, dsn string, dbName string) *sql.DB {
 
@@ -47,7 +37,6 @@ func CreateDBConn(driver string, dsn string, dbName string) *sql.DB {
 
 	// handle error
 	if err != nil {
-		//panic(err.Error())
 		log.Panicln(err.Error())
 	}
 
@@ -58,10 +47,6 @@ func InitAllUsers(db *sql.DB) map[string]bool {
 
 	users := make(map[string]bool)
 
-	//user := struct {
-	//	Phone string
-	//	API   string
-	//}{}
 	var phone string
 
 	query := fmt.Sprintf(`
@@ -122,11 +107,8 @@ func GetAllKeys(db *sql.DB) map[string]string {
 func GetAllTransactions(db *sql.DB, pageIndex int, recordsPerPage int) map[int]Transactions {
 
 	var trans Transactions
-	//var uTrans Transactions
-	//var tID, uID int
 
 	transactions := make(map[int]Transactions)
-	//userTrans := make(map[int][]Transactions)
 
 	query := fmt.Sprintf(`
 								SELECT t.id, u.id, u.name, t.trans_date, t.weight, i.name
@@ -145,40 +127,20 @@ func GetAllTransactions(db *sql.DB, pageIndex int, recordsPerPage int) map[int]T
 		for results.Next() {
 			// Scan() copy each row of data from db and assign to the address specified
 			err = results.Scan(&trans.TransID, &trans.UserID, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
-			//fmt.Println(user.ApiKey, "db")
-			//fmt.Println(input.ApiKey, "input")
-			if err != nil {
-				//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
-				log.Panicln(err.Error())
 
+			if err != nil {
+				log.Panicln(err.Error())
 			}
 
 			transactions[trans.TransID] = trans
-
-			//uTrans := Transactions{
-			//	trans.TransID,
-			//	trans.UserID,
-			//	trans.Name,
-			//	trans.Weight,
-			//	trans.Item,
-			//	trans.TransDate,
-			//}
-
-			//if _, ok := userTrans[trans.UserID]; !ok {
-			//	userTrans[trans.UserID] = append(make([]Transactions, 0), trans)
-			//} else {
-			//	userTrans[trans.UserID] = append(userTrans[trans.UserID], trans)
-			//}
-
 		}
 	}
-	return transactions //, userTrans
+	return transactions
 }
 
 func GetUserTransactionsByItem(db *sql.DB, pageIndex int, recordsPerPage int, userID int, item string) map[int][]Transactions {
 
 	var trans Transactions
-	//var id int
 
 	transactions := make(map[int][]Transactions)
 
@@ -200,22 +162,12 @@ func GetUserTransactionsByItem(db *sql.DB, pageIndex int, recordsPerPage int, us
 		for results.Next() {
 			// Scan() copy each row of data from db and assign to the address specified
 			err = results.Scan(&trans.TransID, &trans.UserID, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
-			//fmt.Println(user.ApiKey, "db")
-			//fmt.Println(input.ApiKey, "input")
-			if err != nil {
-				//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
-				log.Panicln(err.Error())
 
+			if err != nil {
+				log.Panicln(err.Error())
 			}
 
-			//if _, ok := transactions[trans.UserID]; !ok {
-			//	transactions[trans.UserID] = append(make([]Transactions, 0), trans)
-			//} else {
-			//	transactions[trans.UserID] = append(userTrans[trans.UserID], trans)
-			//}
-			//transactions[trans.userID] = trans
 			transactions[trans.UserID] = append(transactions[trans.UserID], trans)
-
 		}
 	}
 	return transactions
@@ -224,7 +176,6 @@ func GetUserTransactionsByItem(db *sql.DB, pageIndex int, recordsPerPage int, us
 func GetUserTransactions(db *sql.DB, pageIndex int, recordsPerPage int, userID int) map[int][]Transactions {
 
 	var trans Transactions
-	//var id int
 
 	transactions := make(map[int][]Transactions)
 
@@ -246,22 +197,12 @@ func GetUserTransactions(db *sql.DB, pageIndex int, recordsPerPage int, userID i
 		for results.Next() {
 			// Scan() copy each row of data from db and assign to the address specified
 			err = results.Scan(&trans.TransID, &trans.UserID, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
-			//fmt.Println(user.ApiKey, "db")
-			//fmt.Println(input.ApiKey, "input")
-			if err != nil {
-				//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
-				log.Panicln(err.Error())
 
+			if err != nil {
+				log.Panicln(err.Error())
 			}
 
-			//if _, ok := transactions[trans.UserID]; !ok {
-			//	transactions[trans.UserID] = append(make([]Transactions, 0), trans)
-			//} else {
-			//	transactions[trans.UserID] = append(userTrans[trans.UserID], trans)
-			//}
-			//transactions[trans.userID] = trans
 			transactions[trans.UserID] = append(transactions[trans.UserID], trans)
-
 		}
 	}
 	return transactions
@@ -270,8 +211,6 @@ func GetUserTransactions(db *sql.DB, pageIndex int, recordsPerPage int, userID i
 func GetAllUsers(db *sql.DB, pageIndex int, recordsPerPage int) map[int]UserInfo {
 
 	var user UserInfo
-	//var id int
-	//var results []map[int]UserInfo
 
 	users := make(map[int]UserInfo)
 
@@ -288,84 +227,21 @@ func GetAllUsers(db *sql.DB, pageIndex int, recordsPerPage int) map[int]UserInfo
 		for results.Next() {
 			// Scan() copy each row of data from db and assign to the address specified
 			err = results.Scan(&user.UserID, &user.Phone, &user.Name, &user.Points, &user.LastLogin)
-			//fmt.Println(user.ApiKey, "db")
-			//fmt.Println(input.ApiKey, "input")
 			if err != nil {
-				//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
 				log.Panicln(err.Error())
-
 			}
+
 			users[user.UserID] = user
 		}
 	}
-	//results = append(results, users)
+
 	return users
 }
 
 func AddUser(db *sql.DB, name string, phone string, password string) {
-	//userExist := checkExistUser(db, phone)
-	//if !userExist {
+
 	addUser(db, name, phone, password)
-	//}
-
-	//return userExist
-
 }
-
-//func checkExistUser(db *sql.DB, phone string) bool {
-//
-//	user := struct {
-//		Name   string
-//		ID     string
-//		APIKey string
-//	}{}
-//
-//	userExist := false
-//
-//	query := fmt.Sprintf(`
-//								SELECT name, nric, api_key
-//								FROM Users
-//								WHERE nric='%s'
-//								`, id)
-//	if err := db.QueryRow(query).Scan(&user.Name, &user.ID, &user.APIKey); err != nil {
-//		log.Panicln(err.Error())
-//	} else {
-//		if user.ID != "" && user.APIKey != apiKey { // existing user with wrong apikey
-//			log.Panicln(errors.New("invalid api key"))
-//		} else {
-//			userExist = true
-//		}
-//	}
-//
-//	//if results, err := db.Query(query); err != nil {
-//	//	log.Panicln(err.Error())
-//	//} else {
-//	//	if results.Next() {
-//	//		// Scan() copy each row of data from db and assign to the address specified
-//	//		err = results.Scan(&user.Name, &user.ID, &user.APIKey)
-//	//		//fmt.Println(user.ApiKey, "db")
-//	//		//fmt.Println(input.ApiKey, "input")
-//	//		if err != nil {
-//	//			//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
-//	//			log.Panicln(err.Error())
-//	//
-//	//		} else {
-//	//			if user.ID != "" && user.ApiKey != input.ApiKey { // existing user with wrong apikey
-//	//				log.Panicln(errors.New("invalid api key"))
-//	//			} else {
-//	//				userExist = true
-//	//			}
-//	//		}
-//	//	}
-//	//}
-//
-//	//if !userExist {
-//	//	addUser(db, input)
-//	//}
-//
-//	return userExist
-//
-//}
 
 func addUser(db *sql.DB, name string, phone string, password string) {
 	query := fmt.Sprintf(`
@@ -392,26 +268,11 @@ func retrievePointsUser(db *sql.DB, userID int) int {
 						FROM Users
 						WHERE id = '%d'
 						`, userID)
-	//fmt.Println(query)
 
 	if err := db.QueryRow(query).Scan(&userPoints); err != nil {
 		log.Panicln(err.Error())
 	}
 
-	//if results, err := db.Query(query); err != nil {
-	//	log.Panicln(err.Error())
-	//} else {
-	//	if results.Next() {
-	//
-	//		// Scan() copy each row of data from db and assign to the address specified
-	//		err = results.Scan(&UserPoints)
-	//
-	//		if err != nil {
-	//			log.Panicln(err.Error())
-	//
-	//		}
-	//	}
-	//}
 	return userPoints
 }
 
@@ -431,7 +292,7 @@ func getUserID(db *sql.DB, phone string) int {
 						FROM Users
 						WHERE phone = '%s'
 						`, phone)
-	//_, err := db.Query(query)
+
 	if err := db.QueryRow(query).Scan(&userID); err != nil {
 		log.Panicln(err.Error())
 	}
@@ -448,27 +309,10 @@ func getItemID(db *sql.DB, item string) int {
 						FROM Items
 						WHERE name = '%s'
 						`, item)
-	//_, err := db.Query(query)
+
 	if err := db.QueryRow(query).Scan(&itemID); err != nil {
 		log.Panicln(err.Error())
 	}
-
-	//if results, err := db.Query(query); err != nil {
-	//	log.Panicln(err.Error())
-	//} else {
-	//
-	//	if results.Next() {
-	//		// Scan() copy each row of data from db and assign to the address specified
-	//		err = results.Scan(&itemID)
-	//		//fmt.Println(user.ApiKey, "db")
-	//		//fmt.Println(input.ApiKey, "input")
-	//		if err != nil {
-	//			//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
-	//			log.Panicln(err.Error())
-	//
-	//		}
-	//	}
-	//}
 
 	return itemID
 }
@@ -513,7 +357,6 @@ func RedeemVoucher(db *sql.DB, phone string, voucherID string) (int, int, bool) 
 	redeem, valid := validVoucher(db, userID, voucherID)
 	if valid { // if valid voucher update db
 		updateVoucher(db, userID, voucherID)
-		//updateUserPoints(db, id, points, true)
 	}
 	return userID, redeem, valid
 }
@@ -551,37 +394,8 @@ func validVoucher(db *sql.DB, id int, voucherID string) (int, bool) {
 		valid = true
 	}
 
-	//if results, err := db.Query(query); err != nil {
-	//	log.Panicln(err.Error())
-	//} else {
-	//	if results.Next() {
-	//
-	//		// Scan() copy each row of data from db and assign to the address specified
-	//		err = results.Scan(&vID)
-	//		//fmt.Println(user.ApiKey, "db")
-	//		//fmt.Println(input.ApiKey, "input")
-	//		if err != nil {
-	//			//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
-	//			log.Panicln(err.Error())
-	//
-	//		}
-	//		if vID == voucherID {
-	//			valid = true
-	//		}
-	//	}
-	//}
-
 	return redeem, valid
 }
-
-//func IssueVoucher(db *sql.DB, id int, voucherID string, points int) bool {
-//	//valid := validVoucher(db, id, voucherID)
-//	//if valid { // if valid voucher update db
-//	//	updateVoucher(db, id, voucherID)
-//	updateUserPoints(db, id, points, true)
-//	//}
-//	//return valid
-//}
 
 func AddVoucher(db *sql.DB, phone string, voucherID string, amount int, points int) (int, string, int, int) {
 	userID := getUserID(db, phone)
@@ -604,8 +418,6 @@ func addVoucherUser(db *sql.DB, id int, voucherID string, amount int) {
 
 func RetrieveVoucherStatus(db *sql.DB, phone string, voucherID string) (int, string, bool, bool) {
 	userID := getUserID(db, phone)
-	//redeem, valid := validVoucher(db, userID, voucherID)
-	//if valid { // if valid voucher update db
 	valid, redeem := voucherStatus(db, userID, voucherID)
 	return userID, voucherID, redeem, valid
 }
@@ -618,11 +430,9 @@ func voucherStatus(db *sql.DB, id int, voucherID string) (bool, bool) {
 						FROM Vouchers
 						WHERE voucher_id = '%s' AND user_id = '%d'
 						`, voucherID, id)
-	//_, err := db.Query(query)
-	if err := db.QueryRow(query).Scan(&redeem); err != nil { // no voucher ID
-		//log.Panicln(err.Error())
-		return false, false
 
+	if err := db.QueryRow(query).Scan(&redeem); err != nil { // no voucher ID
+		return false, false
 	}
 
 	if redeem == 1 {
@@ -655,7 +465,3 @@ func AddKey(db *sql.DB, username string, apiKey string) {
 		log.Panicln(err.Error())
 	}
 }
-
-//func UpdateVoucherStatus(db *sql.DB, id int, voucherID string) bool {
-//	return voucherStatus(db, id, voucherID)
-//}

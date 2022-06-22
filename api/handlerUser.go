@@ -54,7 +54,6 @@ func Home(res http.ResponseWriter, req *http.Request) {
 }
 
 func AddTransaction(res http.ResponseWriter, req *http.Request) {
-	//fmt.Println("get all users")
 
 	//// check for valid access token
 	//if !validKey(req) {
@@ -69,13 +68,9 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 	// check if body is in json format
 	// use Content-Type to check for the resource type
 	// for POST and PUT, information is sent via the request body
-
 	if req.Header.Get("Content-Type") == "application/json" {
 		fmt.Println("json type")
 
-		// POST is for creating new course
-		// if duplicate course or module is created
-		// will ask user to use PUT to update the content instead
 		if req.Method == "POST" {
 			db := database.CreateDBConn(sqlDriver, dsn, dbName)
 			defer db.Close()
@@ -91,7 +86,6 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 
 				//fmt.Println("no body error")
 
-				//user := database.UserInfo{"", "", ""}
 				info := struct { // fields need to be caps for first letter to take in json input
 					Phone  string `json:"phone"`
 					Item   string `json:"item"`
@@ -103,24 +97,29 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 				//fmt.Println(reqBody, string(reqBody))
 				//fmt.Println(info)
 
+				//  check if it is a valid phone number
 				if !validPhoneNum(info.Phone) {
 					unprocessableEntityStatusJSON(res, false,
 						"Phone must be 8 digits integer.", data)
 					return
 				}
 
+				// check if all information is there
 				if !validTransInfo(info.Phone, info.Item, info.Points, info.Weight) {
 					unprocessableEntityStatusJSON(res, false,
 						"All fields need to be filled.", data)
 					return
 				}
 
+				// if phone in userMap
+				// add transaction to database
 				if _, ok := usersMap[info.Phone]; ok {
 					data["phone"] = info.Phone
 					data["item"] = info.Item
 					data["points"] = info.Points
 					data["weight"] = info.Weight
 
+					// add transaction to database
 					database.AddTransaction(db, info.Phone, info.Item, info.Points, info.Weight)
 					createdStatusJSON(res, true, "Transactions added.", data)
 				} else {
@@ -129,7 +128,7 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 			}
 		}
 	} else {
-		fmt.Println("no content type")
+		//fmt.Println("no content type")
 		notAcceptableStatusJSON(res, false, "Content-type is not JSON format for POST/PUT method.", data)
 	}
 
@@ -145,11 +144,7 @@ func RetrieveUserPoints(res http.ResponseWriter, req *http.Request) {
 	// for POST and PUT, information is sent via the request body
 	//&& req.Header.Get("APIkey") != ""
 	if req.Header.Get("Content-Type") == "application/json" {
-		//fmt.Println("json type")
 
-		// POST is for creating new course
-		// if duplicate course or module is created
-		// will ask user to use PUT to update the content instead
 		if req.Method == "POST" {
 			db := database.CreateDBConn(sqlDriver, dsn, dbName)
 			defer db.Close()
@@ -165,21 +160,24 @@ func RetrieveUserPoints(res http.ResponseWriter, req *http.Request) {
 
 				//fmt.Println("no body error")
 
-				//user := database.UserInfo{"", "", ""}
 				info := struct {
 					Phone string `json:"phone"`
 				}{}
 				json.Unmarshal(reqBody, &info)
 				//fmt.Println(info)
 
+				// check if phone number is valid
 				if !validPhoneNum(info.Phone) {
 					unprocessableEntityStatusJSON(res, false,
 						"Phone must be 8 digits integer.", data)
 					return
 				}
 
+				// if phone is in userMap
+				// retrieve points from database
 				if _, ok := usersMap[info.Phone]; ok {
 
+					// retrieve points from database
 					userID, points := database.RetrievePoints(db, info.Phone)
 
 					data["userID"] = userID
@@ -189,20 +187,6 @@ func RetrieveUserPoints(res http.ResponseWriter, req *http.Request) {
 				} else {
 					notFoundStatusJSON(res, false, "User not found.", data)
 				}
-
-				//// write status code to header
-				//res.WriteHeader(http.StatusAccepted)
-				//
-				//res.Header().Set("Content-Type", "application/json")
-				//resp := make(map[string]int)
-				//resp["points"] = points
-				//if jsonResp, err := json.Marshal(resp); err != nil {
-				//	log.Panicln(err.Error())
-				//} else {
-				//	res.Write(jsonResp)
-				//}
-				//res.Write([]byte("202 - Retrieve points:" + string(points)))
-				//fmt.Println(http.StatusAccepted, "retrieve points:", points)
 
 			}
 		}
@@ -222,11 +206,7 @@ func VoucherStatus(res http.ResponseWriter, req *http.Request) {
 	// for POST and PUT, information is sent via the request body
 	//&& req.Header.Get("APIkey") != ""
 	if req.Header.Get("Content-Type") == "application/json" {
-		//fmt.Println("json type")
 
-		// POST is for creating new course
-		// if duplicate course or module is created
-		// will ask user to use PUT to update the content instead
 		if req.Method == "POST" {
 			db := database.CreateDBConn(sqlDriver, dsn, dbName)
 			defer db.Close()
@@ -242,7 +222,6 @@ func VoucherStatus(res http.ResponseWriter, req *http.Request) {
 
 				//fmt.Println("no body error")
 
-				//user := database.UserInfo{"", "", ""}
 				info := struct {
 					Phone     string `json:"phone"`
 					VoucherID string `json:"vID"`
@@ -250,22 +229,28 @@ func VoucherStatus(res http.ResponseWriter, req *http.Request) {
 				json.Unmarshal(reqBody, &info)
 				//fmt.Println(info)
 
+				// check if phone number is valid
 				if !validPhoneNum(info.Phone) {
 					unprocessableEntityStatusJSON(res, false,
 						"Phone must be 8 digits integer.", data)
 					return
 				}
 
+				// check if all information is present
 				if !validCheckVoucher(info.Phone, info.VoucherID) {
 					unprocessableEntityStatusJSON(res, false,
 						"All fields must be filled.", data)
 					return
 				}
 
+				// if phone in userMap
+				// retrieve voucher status from database
 				if _, ok := usersMap[info.Phone]; ok {
-					// check add user
+
+					// retrieve voucher status from database
 					userID, vID, redeem, validVoucherID := database.RetrieveVoucherStatus(db, info.Phone, info.VoucherID)
 
+					// check if voucherID is valid
 					if !validVoucherID {
 						notFoundStatusJSON(res, false, "Voucher not found.", data)
 						return
@@ -296,13 +281,8 @@ func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 	// check if body is in json format
 	// use Content-Type to check for the resource type
 	// for POST and PUT, information is sent via the request body
-	//&& req.Header.Get("APIkey") != ""
 	if req.Header.Get("Content-Type") == "application/json" {
-		//fmt.Println("json type")
 
-		// POST is for creating new course
-		// if duplicate course or module is created
-		// will ask user to use PUT to update the content instead
 		if req.Method == "PUT" {
 			db := database.CreateDBConn(sqlDriver, dsn, dbName)
 			defer db.Close()
@@ -318,7 +298,6 @@ func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 
 				//fmt.Println("no body error")
 
-				//user := database.UserInfo{"", "", ""}
 				info := struct {
 					Phone     string `json:"phone"`
 					VoucherID string `json:"vID"`
@@ -326,25 +305,33 @@ func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 				json.Unmarshal(reqBody, &info)
 				//fmt.Println(info)
 
+				// check if phone number is valid
 				if !validPhoneNum(info.Phone) {
 					unprocessableEntityStatusJSON(res, false,
 						"Phone must be 8 digits integer.", data)
 					return
 				}
 
+				// check if all information is present
 				if !validCheckVoucher(info.Phone, info.VoucherID) {
 					unprocessableEntityStatusJSON(res, false,
 						"All fields must be filled.", data)
 					return
 				}
 
-				// check add user
+				// if phone number in userMap
+				// redeem voucher from database
 				if _, ok := usersMap[info.Phone]; ok {
+
+					// redeem voucher from database
 					userID, redeem, validVoucherID := database.RedeemVoucher(db, info.Phone, info.VoucherID)
+
+					// check if voucherID is valid
 					if !validVoucherID {
 						notFoundStatusJSON(res, false, "Voucher not found.", data)
 						return
 					}
+					// check if voucher has been redeemed
 					if redeem == 1 {
 						notAcceptableStatusJSON(res, false, "Voucher has been redeemed.", data)
 						return
@@ -376,11 +363,7 @@ func AddUserVoucher(res http.ResponseWriter, req *http.Request) {
 	// for POST and PUT, information is sent via the request body
 	//&& req.Header.Get("APIkey") != ""
 	if req.Header.Get("Content-Type") == "application/json" {
-		//fmt.Println("json type")
 
-		// POST is for creating new course
-		// if duplicate course or module is created
-		// will ask user to use PUT to update the content instead
 		if req.Method == "POST" {
 			db := database.CreateDBConn(sqlDriver, dsn, dbName)
 			defer db.Close()
@@ -412,14 +395,17 @@ func AddUserVoucher(res http.ResponseWriter, req *http.Request) {
 					return
 				}
 
+				// check if all voucher information are present
 				if !validVoucherInfo(info.Phone, info.VoucherID, info.Points, info.Amount) {
 					unprocessableEntityStatusJSON(res, false,
 						"All fields need to be filled.", data)
 					return
 				}
 
+				// if phone number in userMap
+				// add voucher to user in database
 				if _, ok := usersMap[info.Phone]; ok {
-					// add voucher
+					// add voucher to user in database
 					userID, vID, amount, points := database.AddVoucher(db, info.Phone, info.VoucherID, info.Amount, info.Points)
 
 					data["id"] = userID
@@ -452,6 +438,7 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 	// values will be a map
 	values := req.URL.Query()
 
+	// check if query strings are present
 	if _, ok := values["page_index"]; !ok {
 		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be provided.", data)
 		return
@@ -463,11 +450,11 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 
 	page, records, valid := getQueryStrings(values)
 
+	// check if query string values are provided correctly
 	if !valid {
 		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be integer.", data)
 		return
 	}
-
 	if !positiveInt(page, records) {
 		badRequestStatusUser(res, false, "Page_index and records_per_page need to be equal or larger "+
 			"than 0 and 1 respectively to be able to retrieve transactions.", data)
@@ -476,7 +463,7 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 
 	// Vars returns the route variables for the current request, if any from the gorilla mux
 	// return a map with key string and value string
-	// params is a map with key(courseid) as string and value(specified in url) as string
+	// params is a map with key(userid, itemid) as string and value(specified in url) as string
 	params := mux.Vars(req)
 
 	// Get method - retrieve and request data from a specified recourse (url)
@@ -490,10 +477,11 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 
 		if params["userid"] != "" { // userid exists in url
 
+			// check if value is integer
 			if uID, err := strconv.Atoi(params["userid"]); err != nil {
 				badRequestStatusUser(res, false, "User id need to be integer.", data)
 				return
-			} else {
+			} else { // if value is integer
 
 				var msg string
 
@@ -501,87 +489,61 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 
 					// convert to Title case
 					item := cases.Title(language.Und, cases.NoLower).String(strings.ToLower(params["itemid"]))
+
+					// get user transactions by item from database
 					uTrans = database.GetUserTransactionsByItem(db, page, records, uID, item)
+
 					msg = fmt.Sprintf("Get %d %s transcations for userID %d.",
 						len(uTrans[uID]), item, uID)
 
 				} else { // itemid does not exists in url
 
+					// get user transactions from database
 					uTrans = database.GetUserTransactions(db, page, records, uID)
+
 					msg = fmt.Sprintf("Get %d transcations for userID %d.",
 						len(uTrans[uID]), uID)
 
 				}
-				if _, ok := uTrans[uID]; !ok {
-					//if len(uTrans[uID]) == 0 {
+
+				// check if userid in uTrans
+				if _, ok := uTrans[uID]; !ok { // if uID not in uTrans means no transactions retrieved from database
+
 					if page == 0 { // if no offset and no transactions
 						msg = fmt.Sprintf("No transactions in database userID %d.",
 							uID)
-						//notFoundStatusJSON(res, false, msg,
-						//	make(map[string]interface{}))
-						//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
-					} else { // 1 or more
+					} else { // 1 or more pages
 						msg = fmt.Sprintf("No more transactions available in database userID %d.",
 							uID)
-						//notFoundStatusJSON(res, false, msg,
-						//	make(map[string]interface{}))
-						//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
 					}
-					notFoundStatusJSON(res, false, msg,
-						make(map[string]interface{}))
-					//} else {
-					//	notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
-					//}
+					notFoundStatusJSON(res, false, msg, make(map[string]interface{}))
 
 					return
-				} else {
+				} else { // if uID in uTrans means transactions retrieved from database
+
 					data[uID] = uTrans[uID]
-					//acceptedStatusUser(res, true, "Retrieved user transactions.", data)
-					//if len(uTrans[uID]) == 0 {
-					//	if page == 0 { // if no offset and no transactions
-					//		notFoundStatusJSON(res, false, "No user transactions in database.",
-					//			make(map[string]interface{}))
-					//		//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
-					//	} else { // 1 or more
-					//		notFoundStatusJSON(res, false, "No more user transactions available in database.",
-					//			make(map[string]interface{}))
-					//		//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
-					//	}
-					//
-					//} else {
 
-					//msg := fmt.Sprintf("Get %d transcations for userID %d.",
-					//	len(uTrans[uID]), uID)
-
-					//if (page*records)+1 == (page*records)+len(uTrans) {
-					//	msg = fmt.Sprintf("Get transaction id %d.", (page*records)+1)
-					//}
-					//acceptedStatusAllTransactions(res, true, msg, uTrans)
 					acceptedStatusUser(res, true, msg, data)
-					//}
-					//// write status code to header
-					//res.WriteHeader(http.StatusAccepted)
-					//json.NewEncoder(res).Encode(uTrans[uID])
 				}
 
 			}
 
 		} else { // userid does not exist in url
 
+			// get all transactions from database
 			trans = database.GetAllTransactions(db, page, records)
 
+			// if no transactions retrieved from database
 			if len(trans) == 0 {
 				if page == 0 { // if no offset and no transactions
 					notFoundStatusJSON(res, false, "No transactions in database.",
 						make(map[string]interface{}))
-					//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
-				} else { // 1 or more
+				} else { // 1 or more pages
 					notFoundStatusJSON(res, false, "No more transactions available in database.",
 						make(map[string]interface{}))
-					//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
 				}
 
-			} else {
+			} else { // if transactions retrieved from database
 				msg := fmt.Sprintf("Get transcation id %d to %d .",
 					(page*records)+1, (page*records)+len(trans))
 				if (page*records)+1 == (page*records)+len(trans) {
@@ -589,21 +551,7 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 				}
 				acceptedStatusAllTransactions(res, true, msg, trans)
 			}
-			//// write status code to header
-			//res.WriteHeader(http.StatusAccepted)
-			//
-			////res.Header().Set("Content-Type", "application/json")
-			////resp := make(map[string]bool)
-			////resp["redeem"] = status
-			////if jsonResp, err := json.Marshal(resp); err != nil {
-			////	log.Panicln(err.Error())
-			////} else {
-			////	res.Write(jsonResp)
-			////}
-			//
-			//json.NewEncoder(res).Encode(trans)
 		}
-
 	}
 
 }
@@ -619,6 +567,7 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 	// values will be a map
 	values := req.URL.Query()
 
+	// check if query strings are present
 	if _, ok := values["page_index"]; !ok {
 		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be provided.", data)
 		return
@@ -630,18 +579,16 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 
 	page, records, valid := getQueryStrings(values)
 
+	// check if query string values are provided correctly
 	if !valid {
 		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be integer.", data)
 		return
 	}
-
 	if !positiveInt(page, records) {
 		badRequestStatusUser(res, false, "Page_index and records_per_page need to be equal or larger "+
 			"than 0 and 1 respectively to be able to retrieve users.", data)
 		return
 	}
-
-	//params := mux.Vars(req)
 
 	// Get method - retrieve and request data from a specified recourse (url)
 	// does not require the body
@@ -651,49 +598,26 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 
 		users = database.GetAllUsers(db, page, records)
 
-		////data = users
-		//if params["userid"] != "" { // userid exists in url
-		//
-		//	if uID, err := strconv.Atoi(params["userid"]); err != nil {
-		//		badRequestStatusUser(res, false, "User id need to be integer.", data)
-		//		return
-		//	} else {
-		//		if _, ok := users[uID]; !ok {
-		//			notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
-		//			return
-		//		} else {
-		//
-		//			data[uID] = users[uID]
-		//			acceptedStatusUser(res, true, "Retrieved user data.", data)
-		//		}
-		//	}
-		//
-		//} else { // userid does not exist in url
-
+		// if no users retrieved from database
 		if len(users) == 0 {
-			//acceptedStatusAllUsers(res, true, "No users in database.", users)
+
 			if page == 0 { // if no offset and no transactions
 				notFoundStatusJSON(res, false, "No users in database.",
 					make(map[string]interface{}))
-				//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
-			} else { // 1 or more
+			} else { // 1 or more pages
 				notFoundStatusJSON(res, false, "No more users available in database.",
 					make(map[string]interface{}))
-				//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
 			}
-		} else {
+		} else { // users retrieved from database
+
 			msg := fmt.Sprintf("Get user id %d to %d.", (page*records)+1, (page*records)+len(users))
 			if (page*records)+1 == (page*records)+len(users) {
 				msg = fmt.Sprintf("Get user id %d.", (page*records)+1)
 			}
 
 			acceptedStatusAllUsers(res, true, msg, users)
-			//acceptedStatusAllUsers(res, true, "Get all users.", users)
 		}
-		//}
-
 	}
-
 }
 
 func AddUser(res http.ResponseWriter, req *http.Request) {
@@ -704,13 +628,8 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 	// check if body is in json format
 	// use Content-Type to check for the resource type
 	// for POST and PUT, information is sent via the request body
-	//&& req.Header.Get("APIkey") != ""
 	if req.Header.Get("Content-Type") == "application/json" {
-		//fmt.Println("json type")
 
-		// POST is for creating new course
-		// if duplicate course or module is created
-		// will ask user to use PUT to update the content instead
 		if req.Method == "POST" {
 			db := database.CreateDBConn(sqlDriver, dsn, dbName)
 			defer db.Close()
@@ -730,49 +649,42 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 					Name     string `json:"name"`
 					Phone    string `json:"phone"`
 					Password string `json:"password"`
-					//APIKey string `json:"key"`
 				}{}
-
-				//userMap := make(map[string]string)
 
 				json.Unmarshal(reqBody, &user)
 				userPW, _ := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.MinCost)
 				//fmt.Println(user, userPW)
 
+				// check if phone number is valid
 				if !validPhoneNum(user.Phone) {
 					unprocessableEntityStatusJSON(res, false,
 						"Phone must be 8 digits integer.", data)
 					return
 				}
 
+				// check if all user information are present
 				if !validUserInfo(user.Name, user.Phone, user.Password) {
 					unprocessableEntityStatusJSON(res, false,
 						"All fields need to be filled.", data)
 					return
 				}
 
-				if _, ok := usersMap[user.Phone]; !ok { // existing user
+				// if phone number exists in userMap
+				if _, ok := usersMap[user.Phone]; !ok { // new user, add user to database
 					usersMap[user.Phone] = true
 					data["name"] = user.Name
 					data["phone"] = user.Phone
 
+					// add user to database
 					database.AddUser(db, user.Name, user.Phone, string(userPW))
 					createdStatusJSON(res, true, "User added.", data)
 
-				} else {
+				} else { // existing user, duplicate user
 					conflictStatusJSON(res, false, "Duplicate user.", data)
 				}
-
-				//// check add user
-				//userExist := database.CheckAddUser(db, user.Name, user.Phone)
-				//if userExist {
-				//	acceptedStatus(res)
-				//} else {
-				//	createdStatus(res)
-				//}
 			}
 		}
-	} else {
+	} else { // content type not json
 
 		notAcceptableStatusJSON(res, false, "Content-type is not JSON format for POST/PUT method.", data)
 	}

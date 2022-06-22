@@ -46,6 +46,7 @@ services:
     # specify env vars
     environment:
       - DB_IP=mysql
+      - DB_PW=password
     # add entrypoint to overwrite cmd and entrypoint in Dockerfile
     # so api can wait for mysql to start up before executing
     entrypoint: ["/app/wait-for.sh", "mysql:3306", "--"]
