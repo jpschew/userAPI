@@ -93,7 +93,7 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 					Phone  string `json:"phone"`
 					Item   string `json:"item"`
 					Points int    `json:"points"`
-					Weight int    `json:"weight""`
+					Weight int    `json:"weight"`
 				}{}
 
 				json.Unmarshal(reqBody, &info)
@@ -261,7 +261,12 @@ func VoucherStatus(res http.ResponseWriter, req *http.Request) {
 
 				if _, ok := usersMap[info.Phone]; ok {
 					// check add user
-					userID, vID, redeem := database.RetrieveVoucherStatus(db, info.Phone, info.VoucherID)
+					userID, vID, redeem, validVoucherID := database.RetrieveVoucherStatus(db, info.Phone, info.VoucherID)
+
+					if !validVoucherID {
+						notFoundStatusJSON(res, false, "Voucher not found.", data)
+						return
+					}
 
 					data["userID"] = userID
 					data["voucherID"] = vID
@@ -435,9 +440,27 @@ func AddUserVoucher(res http.ResponseWriter, req *http.Request) {
 func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 
 	trans := make(map[int]database.Transactions)
-	uTrans := make(map[int][]database.UTransactions)
+	uTrans := make(map[int][]database.Transactions)
 
 	data := make(map[int]interface{})
+
+	// get query strings
+	// should have page_index and records_per_page
+	// values will be a map
+	values := req.URL.Query()
+
+	page, records, valid := getQueryStrings(values)
+
+	if !valid {
+		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be integer.", data)
+		return
+	}
+
+	if !positiveInt(page, records) {
+		badRequestStatusUser(res, false, "Page_index and records_per_page need to be equal or larger "+
+			"than 0 and 1 respectively to be able to retrieve transactions.", data)
+		return
+	}
 
 	// Vars returns the route variables for the current request, if any from the gorilla mux
 	// return a map with key string and value string
@@ -450,7 +473,7 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 		db := database.CreateDBConn(sqlDriver, dsn, dbName)
 		defer db.Close()
 
-		trans, uTrans = database.GetAllTransactions(db)
+		//trans = database.GetAllTransactions(db, page, records)
 		//fmt.Println(trans, uTrans)
 
 		if params["userid"] != "" { // userid exists in url
@@ -459,12 +482,48 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 				badRequestStatusUser(res, false, "User id need to be integer.", data)
 				return
 			} else {
+				uTrans = database.GetUserTransactions(db, page, records, uID)
+
 				if _, ok := uTrans[uID]; !ok {
-					notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
+					//if len(uTrans[uID]) == 0 {
+					if page == 0 { // if no offset and no transactions
+						notFoundStatusJSON(res, false, "No user transactions in database.",
+							make(map[string]interface{}))
+						//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
+					} else { // 1 or more
+						notFoundStatusJSON(res, false, "No more user transactions available in database.",
+							make(map[string]interface{}))
+						//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
+					}
+
+					//} else {
+					//	notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
+					//}
+
 					return
 				} else {
 					data[uID] = uTrans[uID]
-					acceptedStatusUser(res, true, "Retrieved user transactions.", data)
+					//acceptedStatusUser(res, true, "Retrieved user transactions.", data)
+					//if len(uTrans[uID]) == 0 {
+					//	if page == 0 { // if no offset and no transactions
+					//		notFoundStatusJSON(res, false, "No user transactions in database.",
+					//			make(map[string]interface{}))
+					//		//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
+					//	} else { // 1 or more
+					//		notFoundStatusJSON(res, false, "No more user transactions available in database.",
+					//			make(map[string]interface{}))
+					//		//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
+					//	}
+					//
+					//} else {
+					msg := fmt.Sprintf("Get %d transcations for userID %d.",
+						len(uTrans[uID]), uID)
+					//if (page*records)+1 == (page*records)+len(uTrans) {
+					//	msg = fmt.Sprintf("Get transaction id %d.", (page*records)+1)
+					//}
+					//acceptedStatusAllTransactions(res, true, msg, uTrans)
+					acceptedStatusUser(res, true, msg, data)
+					//}
 					//// write status code to header
 					//res.WriteHeader(http.StatusAccepted)
 					//json.NewEncoder(res).Encode(uTrans[uID])
@@ -473,10 +532,26 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 
 		} else { // userid does not exist in url
 
+			trans = database.GetAllTransactions(db, page, records)
+
 			if len(trans) == 0 {
-				acceptedStatusAllTransactions(res, true, "No users in database.", trans)
+				if page == 0 { // if no offset and no transactions
+					notFoundStatusJSON(res, false, "No transactions in database.",
+						make(map[string]interface{}))
+					//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
+				} else { // 1 or more
+					notFoundStatusJSON(res, false, "No more transactions available in database.",
+						make(map[string]interface{}))
+					//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
+				}
+
 			} else {
-				acceptedStatusAllTransactions(res, true, "Get all users.", trans)
+				msg := fmt.Sprintf("Get transcation id %d to %d .",
+					(page*records)+1, (page*records)+len(trans))
+				if (page*records)+1 == (page*records)+len(trans) {
+					msg = fmt.Sprintf("Get transaction id %d.", (page*records)+1)
+				}
+				acceptedStatusAllTransactions(res, true, msg, trans)
 			}
 			//// write status code to header
 			//res.WriteHeader(http.StatusAccepted)
@@ -503,7 +578,25 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 	users := make(map[int]database.UserInfo)
 	data := make(map[int]interface{})
 
-	params := mux.Vars(req)
+	// get query strings
+	// should have page_index and records_per_page
+	// values will be a map
+	values := req.URL.Query()
+
+	page, records, valid := getQueryStrings(values)
+
+	if !valid {
+		badRequestStatusUser(res, false, "Both page_index and records_per_page need to be integer.", data)
+		return
+	}
+
+	if !positiveInt(page, records) {
+		badRequestStatusUser(res, false, "Page_index and records_per_page need to be equal or larger "+
+			"than 0 and 1 respectively to be able to retrieve users.", data)
+		return
+	}
+
+	//params := mux.Vars(req)
 
 	// Get method - retrieve and request data from a specified recourse (url)
 	// does not require the body
@@ -511,33 +604,48 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 		db := database.CreateDBConn(sqlDriver, dsn, dbName)
 		defer db.Close()
 
-		users = database.GetAllUsers(db)
+		users = database.GetAllUsers(db, page, records)
 
-		//data = users
-		if params["userid"] != "" { // userid exists in url
+		////data = users
+		//if params["userid"] != "" { // userid exists in url
+		//
+		//	if uID, err := strconv.Atoi(params["userid"]); err != nil {
+		//		badRequestStatusUser(res, false, "User id need to be integer.", data)
+		//		return
+		//	} else {
+		//		if _, ok := users[uID]; !ok {
+		//			notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
+		//			return
+		//		} else {
+		//
+		//			data[uID] = users[uID]
+		//			acceptedStatusUser(res, true, "Retrieved user data.", data)
+		//		}
+		//	}
+		//
+		//} else { // userid does not exist in url
 
-			if uID, err := strconv.Atoi(params["userid"]); err != nil {
-				badRequestStatusUser(res, false, "User id need to be integer.", data)
-				return
-			} else {
-				if _, ok := users[uID]; !ok {
-					notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
-					return
-				} else {
-
-					data[uID] = users[uID]
-					acceptedStatusUser(res, true, "Retrieved user data.", data)
-				}
+		if len(users) == 0 {
+			//acceptedStatusAllUsers(res, true, "No users in database.", users)
+			if page == 0 { // if no offset and no transactions
+				notFoundStatusJSON(res, false, "No users in database.",
+					make(map[string]interface{}))
+				//acceptedStatusAllTransactions(res, true, "No transactions in database.", trans)
+			} else { // 1 or more
+				notFoundStatusJSON(res, false, "No more users available in database.",
+					make(map[string]interface{}))
+				//acceptedStatusAllTransactions(res, true, "No more transactions in database.", trans)
+			}
+		} else {
+			msg := fmt.Sprintf("Get user id %d to %d.", (page*records)+1, (page*records)+len(users))
+			if (page*records)+1 == (page*records)+len(users) {
+				msg = fmt.Sprintf("Get user id %d.", (page*records)+1)
 			}
 
-		} else { // userid does not exist in url
-
-			if len(users) == 0 {
-				acceptedStatusAllUsers(res, true, "No users in database.", users)
-			} else {
-				acceptedStatusAllUsers(res, true, "Get all users.", users)
-			}
+			acceptedStatusAllUsers(res, true, msg, users)
+			//acceptedStatusAllUsers(res, true, "Get all users.", users)
 		}
+		//}
 
 	}
 
@@ -576,7 +684,7 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 				user := struct {
 					Name     string `json:"name"`
 					Phone    string `json:"phone"`
-					Password string `json:"password""`
+					Password string `json:"password"`
 					//APIKey string `json:"key"`
 				}{}
 
@@ -625,6 +733,16 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func getQueryStrings(queryString map[string][]string) (int, int, bool) {
+
+	pageIndex := queryString["page_index"][0]
+	recordsPerPage := queryString["records_per_page"][0]
+
+	page, records, valid := validParams(pageIndex, recordsPerPage)
+
+	return page, records, valid
+}
+
 func validUserInfo(name string, phone string, password string) bool {
 	if name == "" || phone == "" || password == "" {
 		return false
@@ -660,6 +778,29 @@ func validPhoneNum(phone string) bool {
 		if len(phone) != 8 {
 			return false
 		}
+	}
+	return true
+}
+
+func validParams(pageIndex string, recordsPerPage string) (int, int, bool) {
+
+	var page, records int
+	var err error
+
+	if page, err = strconv.Atoi(pageIndex); err != nil {
+		return 0, 0, false
+	}
+	if records, err = strconv.Atoi(recordsPerPage); err != nil {
+		return 0, 0, false
+	}
+
+	return page, records, true
+}
+
+func positiveInt(pageIndex int, recordsPerPage int) bool {
+
+	if pageIndex < 0 || recordsPerPage < 1 {
+		return false
 	}
 	return true
 }

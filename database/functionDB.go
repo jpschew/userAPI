@@ -12,28 +12,31 @@ import (
 )
 
 type UserInfo struct {
-	Phone string
-	Name  string
+	UserID int
+	Phone  string
+	Name   string
 	//ApiKey    string
 	Points    int
 	LastLogin time.Time
 }
 
 type Transactions struct {
-	//UserID	int
+	TransID   int
+	UserID    int
 	Name      string
 	Weight    int
 	Item      string
 	TransDate time.Time
 }
 
-type UTransactions struct {
-	TransID int
-	//Name      string
-	Weight    int
-	Item      string
-	TransDate time.Time
-}
+//type UTransactions struct {
+//	UserID  int
+//	TransID int
+//	//Name      string
+//	Weight    int
+//	Item      string
+//	TransDate time.Time
+//}
 
 // CreateDBConn creates a connection to mysql database given the driver name, dsn and db name.
 func CreateDBConn(driver string, dsn string, dbName string) *sql.DB {
@@ -116,14 +119,14 @@ func GetAllKeys(db *sql.DB) map[string]string {
 	return userAPI
 }
 
-func GetAllTransactions(db *sql.DB) (map[int]Transactions, map[int][]UTransactions) {
+func GetAllTransactions(db *sql.DB, pageIndex int, recordsPerPage int) map[int]Transactions {
 
 	var trans Transactions
-	//var uTrans UTransactions
-	var tID, uID int
+	//var uTrans Transactions
+	//var tID, uID int
 
 	transactions := make(map[int]Transactions)
-	userTrans := make(map[int][]UTransactions)
+	//userTrans := make(map[int][]Transactions)
 
 	query := fmt.Sprintf(`
 								SELECT t.id, u.id, u.name, t.trans_date, t.weight, i.name
@@ -132,14 +135,16 @@ func GetAllTransactions(db *sql.DB) (map[int]Transactions, map[int][]UTransactio
 								ON u.id = t.user_id
 								JOIN my_db.Items i
 								ON i.id = t.item_id
-								`)
+								ORDER BY t.id
+								LIMIT %d OFFSET %d
+								`, recordsPerPage, pageIndex*recordsPerPage)
 
 	if results, err := db.Query(query); err != nil {
 		log.Panicln(err.Error())
 	} else {
 		for results.Next() {
 			// Scan() copy each row of data from db and assign to the address specified
-			err = results.Scan(&tID, &uID, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
+			err = results.Scan(&trans.TransID, &trans.UserID, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
 			//fmt.Println(user.ApiKey, "db")
 			//fmt.Println(input.ApiKey, "input")
 			if err != nil {
@@ -148,68 +153,78 @@ func GetAllTransactions(db *sql.DB) (map[int]Transactions, map[int][]UTransactio
 
 			}
 
-			transactions[tID] = trans
+			transactions[trans.TransID] = trans
 
-			uTrans := UTransactions{
-				tID,
-				trans.Weight,
-				trans.Item,
-				trans.TransDate,
-			}
+			//uTrans := Transactions{
+			//	trans.TransID,
+			//	trans.UserID,
+			//	trans.Name,
+			//	trans.Weight,
+			//	trans.Item,
+			//	trans.TransDate,
+			//}
 
-			if _, ok := userTrans[uID]; !ok {
-				userTrans[uID] = append(make([]UTransactions, 0), uTrans)
-			} else {
-				userTrans[uID] = append(userTrans[uID], uTrans)
-			}
+			//if _, ok := userTrans[trans.UserID]; !ok {
+			//	userTrans[trans.UserID] = append(make([]Transactions, 0), trans)
+			//} else {
+			//	userTrans[trans.UserID] = append(userTrans[trans.UserID], trans)
+			//}
 
 		}
 	}
-	return transactions, userTrans
+	return transactions //, userTrans
 }
 
-//func GetUserTransactions(db *sql.DB, nric string) map[int]Transactions {
-//
-//	var trans Transactions
-//	var id int
-//
-//	transactions := make(map[int]Transactions)
-//
-//	query := fmt.Sprintf(`
-//								SELECT t.id, u.name, t.trans_date, t.weight, i.name
-//								FROM my_db.Users u
-//								JOIN my_db.Transactions t
-//								ON u.id = t.user_id
-//								JOIN my_db.Items i
-//								ON i.id = t.item_id
-//								WHERE nric = '%s'
-//								`, nric)
-//
-//	if results, err := db.Query(query); err != nil {
-//		log.Panicln(err.Error())
-//	} else {
-//		for results.Next() {
-//			// Scan() copy each row of data from db and assign to the address specified
-//			err = results.Scan(&id, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
-//			//fmt.Println(user.ApiKey, "db")
-//			//fmt.Println(input.ApiKey, "input")
-//			if err != nil {
-//				//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
-//				log.Panicln(err.Error())
-//
-//			}
-//
-//			transactions[id] = trans
-//
-//		}
-//	}
-//	return transactions
-//}
+func GetUserTransactions(db *sql.DB, pageIndex int, recordsPerPage int, userID int) map[int][]Transactions {
 
-func GetAllUsers(db *sql.DB) map[int]UserInfo {
+	var trans Transactions
+	//var id int
+
+	transactions := make(map[int][]Transactions)
+
+	query := fmt.Sprintf(`
+								SELECT t.id, u.id, u.name, t.trans_date, t.weight, i.name
+								FROM my_db.Users u
+								JOIN my_db.Transactions t
+								ON u.id = t.user_id
+								JOIN my_db.Items i
+								ON i.id = t.item_id
+								WHERE u.id = '%d'
+								ORDER BY t.id
+								LIMIT %d OFFSET %d
+								`, userID, recordsPerPage, pageIndex*recordsPerPage)
+
+	if results, err := db.Query(query); err != nil {
+		log.Panicln(err.Error())
+	} else {
+		for results.Next() {
+			// Scan() copy each row of data from db and assign to the address specified
+			err = results.Scan(&trans.TransID, &trans.UserID, &trans.Name, &trans.TransDate, &trans.Weight, &trans.Item)
+			//fmt.Println(user.ApiKey, "db")
+			//fmt.Println(input.ApiKey, "input")
+			if err != nil {
+				//fmt.Println(course.CourseCode, course.CourseName, course.Description, module.ModuleCode, module.ModuleName, module.Description)
+				log.Panicln(err.Error())
+
+			}
+
+			//if _, ok := transactions[trans.UserID]; !ok {
+			//	transactions[trans.UserID] = append(make([]Transactions, 0), trans)
+			//} else {
+			//	transactions[trans.UserID] = append(userTrans[trans.UserID], trans)
+			//}
+			//transactions[trans.userID] = trans
+			transactions[trans.UserID] = append(transactions[trans.UserID], trans)
+
+		}
+	}
+	return transactions
+}
+
+func GetAllUsers(db *sql.DB, pageIndex int, recordsPerPage int) map[int]UserInfo {
 
 	var user UserInfo
-	var id int
+	//var id int
 	//var results []map[int]UserInfo
 
 	users := make(map[int]UserInfo)
@@ -217,14 +232,16 @@ func GetAllUsers(db *sql.DB) map[int]UserInfo {
 	query := fmt.Sprintf(`
 								SELECT id, phone, name, points, last_login
 								FROM Users
-								`)
+								ORDER BY id
+								LIMIT %d OFFSET %d
+								`, recordsPerPage, pageIndex*recordsPerPage)
 
 	if results, err := db.Query(query); err != nil {
 		log.Panicln(err.Error())
 	} else {
 		for results.Next() {
 			// Scan() copy each row of data from db and assign to the address specified
-			err = results.Scan(&id, &user.Phone, &user.Name, &user.Points, &user.LastLogin)
+			err = results.Scan(&user.UserID, &user.Phone, &user.Name, &user.Points, &user.LastLogin)
 			//fmt.Println(user.ApiKey, "db")
 			//fmt.Println(input.ApiKey, "input")
 			if err != nil {
@@ -232,9 +249,7 @@ func GetAllUsers(db *sql.DB) map[int]UserInfo {
 				log.Panicln(err.Error())
 
 			}
-
-			users[id] = user
-
+			users[user.UserID] = user
 		}
 	}
 	//results = append(results, users)
@@ -541,12 +556,15 @@ func addVoucherUser(db *sql.DB, id int, voucherID string, amount int) {
 	}
 }
 
-func RetrieveVoucherStatus(db *sql.DB, phone string, voucherID string) (int, string, bool) {
+func RetrieveVoucherStatus(db *sql.DB, phone string, voucherID string) (int, string, bool, bool) {
 	userID := getUserID(db, phone)
-	return userID, voucherID, voucherStatus(db, userID, voucherID)
+	//redeem, valid := validVoucher(db, userID, voucherID)
+	//if valid { // if valid voucher update db
+	valid, redeem := voucherStatus(db, userID, voucherID)
+	return userID, voucherID, redeem, valid
 }
 
-func voucherStatus(db *sql.DB, id int, voucherID string) bool {
+func voucherStatus(db *sql.DB, id int, voucherID string) (bool, bool) {
 	var redeem int
 
 	query := fmt.Sprintf(`
@@ -555,15 +573,17 @@ func voucherStatus(db *sql.DB, id int, voucherID string) bool {
 						WHERE voucher_id = '%s' AND user_id = '%d'
 						`, voucherID, id)
 	//_, err := db.Query(query)
-	if err := db.QueryRow(query).Scan(&redeem); err != nil {
-		log.Panicln(err.Error())
+	if err := db.QueryRow(query).Scan(&redeem); err != nil { // no voucher ID
+		//log.Panicln(err.Error())
+		return false, false
+
 	}
 
 	if redeem == 1 {
-		return true
+		return true, true
 	}
 
-	return false
+	return true, false
 }
 
 func UpdateKey(db *sql.DB, username string, apiKey string) {
