@@ -1,0 +1,44 @@
+version: "3.9"
+# services declared a list of services we want to launch
+services:
+  # first service to build is mysql db
+  mysql:
+#    # use pre built mysql image
+#    # mac: arm64v8/mysql:oracle
+#    # windows: mysql:latest
+    # build from dockerfile
+    build:
+    # image: arm64v8/mysql:oracle
+      context: ./database
+      dockerfile: Dockerfile
+    # specify env vars
+    environment:
+#      - MYSQL_USER=root
+      - MYSQL_ROOT_PASSWORD=Ps11041987!
+      - MYSQL_DB=my_db
+  # second service will be the api
+  api:
+    # need to build golang source from docker file
+    build:
+      # context to build the image
+      # . means current folder of yaml file
+      context: .
+      # dockerfile tells docker-compose where to find Dockerfile
+      dockerfile: Dockerfile
+    # ports publish port to the host machine
+    # so we can call the service from outside of container
+    # second port number should be the same as the port EXPOSE by Dockerfile
+    ports:
+      - "5000:5000"
+    # depends_on means that api depends on mysql
+    # before it can start
+    depends_on:
+      - mysql
+    environment:
+      - DB_IP=mysql
+    # add entrypoint to overwrite cmd and entrypoint in Dockerfile
+    # so api can wait for mysql to start up before executing
+    entrypoint: ["/app/wait-for.sh", "mysql:3306", "--"]
+    # CMD in Dockerfile will be ignored
+    # use command
+    command: ["/app/main"]
