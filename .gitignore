@@ -27,4 +27,4 @@
 *.pem
 
 # env files
-*.env
+.env
