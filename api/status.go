@@ -137,6 +137,22 @@ func acceptedStatusUser(res http.ResponseWriter, ok bool, msg string, data map[i
 
 }
 
+func createdStatusUser(res http.ResponseWriter, ok bool, msg string, data map[int]database.UserInfo) {
+
+	// set header to context-type of json format
+	res.Header().Set("Content-Type", "application/json")
+
+	// write status code to header
+	res.WriteHeader(http.StatusCreated)
+
+	resp := make(map[string]interface{})
+
+	resp = jsonFormatAllUsers(ok, "[MS-Users]- "+msg, data)
+
+	//// returns apikey in JSON converted from GO data
+	json.NewEncoder(res).Encode(resp)
+}
+
 func jsonFormatUser(ok bool, msg string, data map[int]interface{}) map[string]interface{} {
 	resp := make(map[string]interface{})
 	resp["ok"] = ok

@@ -15,6 +15,7 @@ type UserInfo struct {
 	UserID    int
 	Phone     string
 	Name      string
+	Password  string
 	Points    int
 	LastLogin time.Time
 }
@@ -43,14 +44,14 @@ func CreateDBConn(driver string, dsn string, dbName string) *sql.DB {
 	return db
 }
 
-func InitAllUsers(db *sql.DB) map[string]bool {
+func InitAllUsers(db *sql.DB) map[string]string {
 
-	users := make(map[string]bool)
+	users := make(map[string]string)
 
-	var phone string
+	var phone, password string
 
 	query := fmt.Sprintf(`
-								SELECT phone
+								SELECT phone, password
 								FROM Users
 								`)
 
@@ -59,13 +60,13 @@ func InitAllUsers(db *sql.DB) map[string]bool {
 	} else {
 
 		for results.Next() {
-			err = results.Scan(&phone)
+			err = results.Scan(&phone, &password)
 
 			if err != nil {
 				log.Panicln(err.Error())
 			}
 
-			users[phone] = true
+			users[phone] = password
 		}
 	}
 
@@ -215,7 +216,7 @@ func GetAllUsers(db *sql.DB, pageIndex int, recordsPerPage int) map[int]UserInfo
 	users := make(map[int]UserInfo)
 
 	query := fmt.Sprintf(`
-								SELECT id, phone, name, points, last_login
+								SELECT id, phone, name, password, points, last_login
 								FROM Users
 								ORDER BY id
 								LIMIT %d OFFSET %d
@@ -226,7 +227,7 @@ func GetAllUsers(db *sql.DB, pageIndex int, recordsPerPage int) map[int]UserInfo
 	} else {
 		for results.Next() {
 			// Scan() copy each row of data from db and assign to the address specified
-			err = results.Scan(&user.UserID, &user.Phone, &user.Name, &user.Points, &user.LastLogin)
+			err = results.Scan(&user.UserID, &user.Phone, &user.Name, &user.Password, &user.Points, &user.LastLogin)
 			if err != nil {
 				log.Panicln(err.Error())
 			}
@@ -238,9 +239,10 @@ func GetAllUsers(db *sql.DB, pageIndex int, recordsPerPage int) map[int]UserInfo
 	return users
 }
 
-func AddUser(db *sql.DB, name string, phone string, password string) {
+func AddUser(db *sql.DB, name string, phone string, password string) map[int]UserInfo {
 
 	addUser(db, name, phone, password)
+	return getUser(db, phone)
 }
 
 func addUser(db *sql.DB, name string, phone string, password string) {
@@ -253,6 +255,25 @@ func addUser(db *sql.DB, name string, phone string, password string) {
 	if err != nil {
 		log.Panicln(err.Error())
 	}
+}
+
+func getUser(db *sql.DB, phone string) map[int]UserInfo {
+	var user UserInfo
+
+	userInfo := make(map[int]UserInfo)
+
+	query := fmt.Sprintf(`
+								SELECT id, phone, name, password, points, last_login
+								FROM Users
+								WHERE phone = '%s'
+								`, phone)
+	if err := db.QueryRow(query).Scan(&user.UserID, &user.Phone, &user.Name, &user.Password, &user.Points, &user.LastLogin); err != nil {
+		log.Panicln(err.Error())
+	}
+
+	userInfo[user.UserID] = user
+
+	return userInfo
 }
 
 func RetrievePoints(db *sql.DB, phone string) (int, int) {
@@ -387,7 +408,8 @@ func validVoucher(db *sql.DB, id int, voucherID string) (int, bool) {
 	var redeem int
 
 	if err := db.QueryRow(query).Scan(&vID, &redeem); err != nil {
-		log.Panicln(err.Error())
+		//log.Panicln(err.Error())
+		return redeem, valid
 	}
 
 	if vID == voucherID {

@@ -22,8 +22,8 @@ var (
 )
 
 var (
-	usersMap map[string]bool   // map to contain user phone
-	userAPI  map[string]string // map phone to api
+	usersMap map[string]string // to map user to hash password
+	userAPI  map[string]string // map username to api
 	dsn      string
 	dbName   string
 )
@@ -38,7 +38,7 @@ func init() {
 	dbName = dbConfig.DBName + "?parseTime=true"
 	fmt.Println(dsn, dbName)
 
-	usersMap = make(map[string]bool)
+	usersMap = make(map[string]string)
 	// retrieve data from database and assign to the userAPI map
 	db := database.CreateDBConn(sqlDriver, dsn, dbName)
 	defer db.Close()
@@ -50,17 +50,39 @@ func init() {
 
 func Home(res http.ResponseWriter, req *http.Request) {
 
-	fmt.Fprintln(res, "Welcome to user profile API!")
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
+
+	//fmt.Fprintln(res, "Welcome to user profile API!")
+	res.Header().Set("Content-Type", "application/json")
+
+	res.WriteHeader(http.StatusAccepted)
+
+	resp := make(map[string]interface{})
+
+	msg := fmt.Sprint("Welcome to user profile API!")
+
+	resp["ok"] = true
+	resp["msg"] = "[MS-Users]- " + msg
+	resp["data"] = make(map[string]interface{})
+
+	json.NewEncoder(res).Encode(resp)
 }
 
 func AddTransaction(res http.ResponseWriter, req *http.Request) {
 
-	//// check for valid access token
-	//if !validKey(req) {
-	//	res.WriteHeader(http.StatusNotFound)
-	//	res.Write([]byte("401 -Invalid key"))
-	//	return
-	//}
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
 
 	data := make(map[string]interface{})
 
@@ -69,7 +91,7 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 	// use Content-Type to check for the resource type
 	// for POST and PUT, information is sent via the request body
 	if req.Header.Get("Content-Type") == "application/json" {
-		fmt.Println("json type")
+		//fmt.Println("json type")
 
 		if req.Method == "POST" {
 			db := database.CreateDBConn(sqlDriver, dsn, dbName)
@@ -99,15 +121,17 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 
 				//  check if it is a valid phone number
 				if !validPhoneNum(info.Phone) {
+					msg := fmt.Sprint("Phone must be 8 digits integer and starts with 8 or 9.")
 					unprocessableEntityStatusJSON(res, false,
-						"Phone must be 8 digits integer.", data)
+						msg, data)
 					return
 				}
 
 				// check if all information is there
 				if !validTransInfo(info.Phone, info.Item, info.Points, info.Weight) {
+					msg := fmt.Sprint("All fields need to be filled.")
 					unprocessableEntityStatusJSON(res, false,
-						"All fields need to be filled.", data)
+						msg, data)
 					return
 				}
 
@@ -121,7 +145,7 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 
 					// add transaction to database
 					database.AddTransaction(db, info.Phone, info.Item, info.Points, info.Weight)
-					createdStatusJSON(res, true, "Transactions added.", data)
+					createdStatusJSON(res, true, "Transaction added.", data)
 				} else {
 					notFoundStatusJSON(res, false, "User not found.", data)
 				}
@@ -135,6 +159,14 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 }
 
 func RetrieveUserPoints(res http.ResponseWriter, req *http.Request) {
+
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
 
 	data := make(map[string]interface{})
 
@@ -166,10 +198,11 @@ func RetrieveUserPoints(res http.ResponseWriter, req *http.Request) {
 				json.Unmarshal(reqBody, &info)
 				//fmt.Println(info)
 
-				// check if phone number is valid
+				//  check if it is a valid phone number
 				if !validPhoneNum(info.Phone) {
+					msg := fmt.Sprint("Phone must be 8 digits integer and starts with 8 or 9.")
 					unprocessableEntityStatusJSON(res, false,
-						"Phone must be 8 digits integer.", data)
+						msg, data)
 					return
 				}
 
@@ -197,6 +230,14 @@ func RetrieveUserPoints(res http.ResponseWriter, req *http.Request) {
 }
 
 func VoucherStatus(res http.ResponseWriter, req *http.Request) {
+
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
 
 	data := make(map[string]interface{})
 
@@ -229,17 +270,19 @@ func VoucherStatus(res http.ResponseWriter, req *http.Request) {
 				json.Unmarshal(reqBody, &info)
 				//fmt.Println(info)
 
-				// check if phone number is valid
+				//  check if it is a valid phone number
 				if !validPhoneNum(info.Phone) {
+					msg := fmt.Sprint("Phone must be 8 digits integer and starts with 8 or 9.")
 					unprocessableEntityStatusJSON(res, false,
-						"Phone must be 8 digits integer.", data)
+						msg, data)
 					return
 				}
 
 				// check if all information is present
 				if !validCheckVoucher(info.Phone, info.VoucherID) {
+					msg := fmt.Sprint("All fields must be filled.")
 					unprocessableEntityStatusJSON(res, false,
-						"All fields must be filled.", data)
+						msg, data)
 					return
 				}
 
@@ -275,6 +318,14 @@ func VoucherStatus(res http.ResponseWriter, req *http.Request) {
 
 func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
+
 	data := make(map[string]interface{})
 
 	// get the header from request
@@ -305,17 +356,19 @@ func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 				json.Unmarshal(reqBody, &info)
 				//fmt.Println(info)
 
-				// check if phone number is valid
+				//  check if it is a valid phone number
 				if !validPhoneNum(info.Phone) {
+					msg := fmt.Sprint("Phone must be 8 digits integer and starts with 8 or 9.")
 					unprocessableEntityStatusJSON(res, false,
-						"Phone must be 8 digits integer.", data)
+						msg, data)
 					return
 				}
 
 				// check if all information is present
 				if !validCheckVoucher(info.Phone, info.VoucherID) {
+					msg := fmt.Sprint("All fields must be filled.")
 					unprocessableEntityStatusJSON(res, false,
-						"All fields must be filled.", data)
+						msg, data)
 					return
 				}
 
@@ -325,6 +378,8 @@ func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 
 					// redeem voucher from database
 					userID, redeem, validVoucherID := database.RedeemVoucher(db, info.Phone, info.VoucherID)
+
+					//fmt.Println(redeem)
 
 					// check if voucherID is valid
 					if !validVoucherID {
@@ -354,6 +409,14 @@ func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 }
 
 func AddUserVoucher(res http.ResponseWriter, req *http.Request) {
+
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
 
 	data := make(map[string]interface{})
 
@@ -389,22 +452,33 @@ func AddUserVoucher(res http.ResponseWriter, req *http.Request) {
 				json.Unmarshal(reqBody, &info)
 				//fmt.Println(info)
 
+				//  check if it is a valid phone number
 				if !validPhoneNum(info.Phone) {
+					msg := fmt.Sprint("Phone must be 8 digits integer and starts with 8 or 9.")
 					unprocessableEntityStatusJSON(res, false,
-						"Phone must be 8 digits integer.", data)
+						msg, data)
 					return
 				}
 
 				// check if all voucher information are present
 				if !validVoucherInfo(info.Phone, info.VoucherID, info.Points, info.Amount) {
+					msg := fmt.Sprint("All fields need to be filled.")
 					unprocessableEntityStatusJSON(res, false,
-						"All fields need to be filled.", data)
+						msg, data)
 					return
 				}
 
 				// if phone number in userMap
 				// add voucher to user in database
 				if _, ok := usersMap[info.Phone]; ok {
+
+					_, currPoints := database.RetrievePoints(db, info.Phone)
+
+					if currPoints < info.Points { // current points lower than points needed to exchange
+
+						notAcceptableStatusJSON(res, false, "Not enough points to exchange voucher.", data)
+						return
+					}
 					// add voucher to user in database
 					userID, vID, amount, points := database.AddVoucher(db, info.Phone, info.VoucherID, info.Amount, info.Points)
 
@@ -427,6 +501,14 @@ func AddUserVoucher(res http.ResponseWriter, req *http.Request) {
 }
 
 func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
+
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
 
 	trans := make(map[int]database.Transactions)
 	uTrans := make(map[int][]database.Transactions)
@@ -510,10 +592,10 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 				if _, ok := uTrans[uID]; !ok { // if uID not in uTrans means no transactions retrieved from database
 
 					if page == 0 { // if no offset and no transactions
-						msg = fmt.Sprintf("No transactions in database userID %d.",
+						msg = fmt.Sprintf("No transactions in database for userID %d.",
 							uID)
 					} else { // 1 or more pages
-						msg = fmt.Sprintf("No more transactions available in database userID %d.",
+						msg = fmt.Sprintf("No more transactions available in database for userID %d.",
 							uID)
 					}
 					notFoundStatusJSON(res, false, msg, make(map[string]interface{}))
@@ -553,10 +635,17 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
-
 }
 
 func GetAllUsers(res http.ResponseWriter, req *http.Request) {
+
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
 
 	//var results []map[int]database.UserInfo
 	users := make(map[int]database.UserInfo)
@@ -622,6 +711,14 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 
 func AddUser(res http.ResponseWriter, req *http.Request) {
 
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
+
 	data := make(map[string]interface{})
 
 	// get the header from request
@@ -671,13 +768,11 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 
 				// if phone number exists in userMap
 				if _, ok := usersMap[user.Phone]; !ok { // new user, add user to database
-					usersMap[user.Phone] = true
-					data["name"] = user.Name
-					data["phone"] = user.Phone
+					usersMap[user.Phone] = string(userPW)
 
 					// add user to database
-					database.AddUser(db, user.Name, user.Phone, string(userPW))
-					createdStatusJSON(res, true, "User added.", data)
+					user := database.AddUser(db, user.Name, user.Phone, string(userPW))
+					createdStatusUser(res, true, "User added.", user)
 
 				} else { // existing user, duplicate user
 					conflictStatusJSON(res, false, "Duplicate user.", data)
@@ -689,99 +784,3 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 		notAcceptableStatusJSON(res, false, "Content-type is not JSON format for POST/PUT method.", data)
 	}
 }
-
-func getQueryStrings(queryString map[string][]string) (int, int, bool) {
-
-	pageIndex := queryString["page_index"][0]
-	recordsPerPage := queryString["records_per_page"][0]
-
-	page, records, valid := validParams(pageIndex, recordsPerPage)
-
-	return page, records, valid
-}
-
-func validUserInfo(name string, phone string, password string) bool {
-	if name == "" || phone == "" || password == "" {
-		return false
-	}
-	return true
-}
-
-func validTransInfo(phone string, item string, points int, weight int) bool {
-	if phone == "" || item == "" || points == 0 || weight == 0 {
-		return false
-	}
-	return true
-}
-
-func validVoucherInfo(phone string, vID string, points int, amount int) bool {
-	if phone == "" || vID == "" || points == 0 || amount == 0 {
-		return false
-	}
-	return true
-}
-
-func validCheckVoucher(phone string, vID string) bool {
-	if phone == "" || vID == "" {
-		return false
-	}
-	return true
-}
-
-func validPhoneNum(phone string) bool {
-	if _, err := strconv.Atoi(phone); err != nil {
-		return false
-	} else {
-		if len(phone) != 8 {
-			return false
-		}
-	}
-	return true
-}
-
-func validParams(pageIndex string, recordsPerPage string) (int, int, bool) {
-
-	var page, records int
-	var err error
-
-	if page, err = strconv.Atoi(pageIndex); err != nil {
-		return 0, 0, false
-	}
-	if records, err = strconv.Atoi(recordsPerPage); err != nil {
-		return 0, 0, false
-	}
-
-	return page, records, true
-}
-
-func positiveInt(pageIndex int, recordsPerPage int) bool {
-
-	if pageIndex < 0 || recordsPerPage < 1 {
-		return false
-	}
-	return true
-}
-
-//// validKey checks for a valid key to secure the REST API
-//// so that only authenticated user can use the REST API
-//func validKey(r *http.Request) bool {
-//	v := r.URL.Query()
-//	//fmt.Println(v)
-//	//fmt.Println(userAPIKey)
-//	// check if user exists
-//	if user, ok := v["user"]; ok && user[0] != "" {
-//		//fmt.Println(user[0])
-//		// check if key exists
-//		if key, ok := v["key"]; ok && key[0] != "" {
-//			//fmt.Println(user[0], key[0])
-//			// check if key tagger to user is correct
-//			if userAPIKey[user[0]] == key[0] {
-//				return true
-//			} else {
-//				return false
-//			}
-//		}
-//		return false
-//	}
-//	return false
-//}
