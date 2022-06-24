@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"userAPI/database"
 )
 
@@ -55,7 +56,9 @@ func acceptedStatusJSON(res http.ResponseWriter, ok bool, msg string, data map[s
 
 }
 
-func createdStatusJSON(res http.ResponseWriter, ok bool, msg string, data map[string]interface{}) {
+func createdStatusJSON(res http.ResponseWriter, ok bool, msg string, data map[string]interface{}, wg *sync.WaitGroup) {
+
+	defer wg.Done()
 
 	// set header to context-type of json format
 	res.Header().Set("Content-Type", "application/json")

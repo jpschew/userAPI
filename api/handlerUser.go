@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"userAPI/config"
 	"userAPI/database"
 )
@@ -36,7 +36,7 @@ func init() {
 	dsn = dbConfig.UserName + ":" + dbConfig.Password + "@tcp(" + dbConfig.DBIP + ":" + dbConfig.DBPort + ")"
 	// need ?parseTime=true after dbName to map timestamp in mysql to time.Time in golang
 	dbName = dbConfig.DBName + "?parseTime=true"
-	fmt.Println(dsn, dbName)
+	//fmt.Println(dsn, dbName)
 
 	usersMap = make(map[string]string)
 	// retrieve data from database and assign to the userAPI map
@@ -75,6 +75,8 @@ func Home(res http.ResponseWriter, req *http.Request) {
 }
 
 func AddTransaction(res http.ResponseWriter, req *http.Request) {
+
+	var wg sync.WaitGroup
 
 	// check for valid api key
 	returnMsg, validAPI := validKey(req)
@@ -144,8 +146,11 @@ func AddTransaction(res http.ResponseWriter, req *http.Request) {
 					data["weight"] = info.Weight
 
 					// add transaction to database
-					database.AddTransaction(db, info.Phone, info.Item, info.Points, info.Weight)
-					createdStatusJSON(res, true, "Transaction added.", data)
+					defer wg.Wait()
+					wg.Add(2)
+					go database.AddTransaction(db, info.Phone, info.Item, info.Points, info.Weight, &wg)
+					go createdStatusJSON(res, true, "Transaction added.", data, &wg)
+
 				} else {
 					notFoundStatusJSON(res, false, "User not found.", data)
 				}
@@ -749,13 +754,13 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 				}{}
 
 				json.Unmarshal(reqBody, &user)
-				userPW, _ := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.MinCost)
+				//userPW, _ := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.MinCost)
 				//fmt.Println(user, userPW)
 
 				// check if phone number is valid
 				if !validPhoneNum(user.Phone) {
 					unprocessableEntityStatusJSON(res, false,
-						"Phone must be 8 digits integer.", data)
+						"Phone must be 8 digits integer or starts with 8 or 9.", data)
 					return
 				}
 
@@ -768,10 +773,12 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 
 				// if phone number exists in userMap
 				if _, ok := usersMap[user.Phone]; !ok { // new user, add user to database
-					usersMap[user.Phone] = string(userPW)
+					//usersMap[user.Phone] = string(userPW)
+					usersMap[user.Phone] = user.Password
 
 					// add user to database
-					user := database.AddUser(db, user.Name, user.Phone, string(userPW))
+					//user := database.AddUser(db, user.Name, user.Phone, string(userPW))
+					user := database.AddUser(db, user.Name, user.Phone, user.Password)
 					createdStatusUser(res, true, "User added.", user)
 
 				} else { // existing user, duplicate user

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"userAPI/apikey"
 	"userAPI/database"
 )
@@ -11,12 +12,15 @@ import (
 // GenKey is the handler function for generating an API key using SHA256 hashing algorithm.
 func GenKey(res http.ResponseWriter, req *http.Request) {
 
+	var wg sync.WaitGroup
+
 	apiKey := apikey.GenerateAPIKey()
 
 	apiMap := make(map[string]interface{})
 	apiMap["apiKey"] = apiKey
 
-	createdStatusJSON(res, true, "API key generated successfully.", apiMap)
+	wg.Add(1)
+	createdStatusJSON(res, true, "API key generated successfully.", apiMap, &wg)
 
 	//return apiKey
 }

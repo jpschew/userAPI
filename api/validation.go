@@ -50,7 +50,7 @@ func validPhoneNum(phone string) bool {
 		if len(phone) != 8 {
 			return false
 		} else {
-			if string(phone[0]) != "8" || string(phone[0]) != "9" { // check if first number is 8 or 9
+			if !(string(phone[0]) == "8" || string(phone[0]) == "9") { // if first number is not 8 or 9
 				return false
 			}
 		}

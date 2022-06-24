@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	// implementation of GO's database/sql/driver interface
@@ -28,6 +29,10 @@ type Transactions struct {
 	Item      string
 	TransDate time.Time
 }
+
+const (
+	YYYYMMDDhhmmss = "2006-01-02 15:04:05"
+)
 
 // CreateDBConn creates a connection to mysql database given the driver name, dsn and db name.
 func CreateDBConn(driver string, dsn string, dbName string) *sql.DB {
@@ -241,11 +246,16 @@ func GetAllUsers(db *sql.DB, pageIndex int, recordsPerPage int) map[int]UserInfo
 
 func AddUser(db *sql.DB, name string, phone string, password string) map[int]UserInfo {
 
+	// add user first before getting the user info to pass back
+	// cannot use goroutines here
 	addUser(db, name, phone, password)
-	return getUser(db, phone)
+	user := getUser(db, phone)
+
+	return user
 }
 
 func addUser(db *sql.DB, name string, phone string, password string) {
+
 	query := fmt.Sprintf(`
 						INSERT INTO Users 
 						(phone, name, password) VALUES
@@ -297,12 +307,22 @@ func retrievePointsUser(db *sql.DB, userID int) int {
 	return userPoints
 }
 
-func AddTransaction(db *sql.DB, phone string, item string, points int, weight int) {
+func AddTransaction(db *sql.DB, phone string, item string, points int, weight int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	itemID := getItemID(db, item)
 	userID := getUserID(db, phone)
-	addToTransaction(db, userID, itemID, weight)
+
+	var wgDB sync.WaitGroup
+
+	defer wgDB.Wait()
+
+	wgDB.Add(2)
+	go addToTransaction(db, userID, itemID, weight, &wgDB)
 	// after a transaction will add points to the user
-	updateUserPoints(db, userID, points, false)
+	go updateUserPoints(db, userID, points, false, &wgDB)
+
 }
 
 func getUserID(db *sql.DB, phone string) int {
@@ -338,7 +358,10 @@ func getItemID(db *sql.DB, item string) int {
 	return itemID
 }
 
-func addToTransaction(db *sql.DB, userID int, itemID int, weight int) {
+func addToTransaction(db *sql.DB, userID int, itemID int, weight int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	query := fmt.Sprintf(`
 						INSERT INTO Transactions
 						(user_id, item_id, weight) VALUES
@@ -350,7 +373,9 @@ func addToTransaction(db *sql.DB, userID int, itemID int, weight int) {
 	}
 }
 
-func updateUserPoints(db *sql.DB, id int, points int, isExchange bool) {
+func updateUserPoints(db *sql.DB, id int, points int, isExchange bool, wg *sync.WaitGroup) {
+
+	defer wg.Done()
 
 	var newPoints int
 	currPoints := retrievePointsUser(db, id)
@@ -385,9 +410,9 @@ func RedeemVoucher(db *sql.DB, phone string, voucherID string) (int, int, bool) 
 func updateVoucher(db *sql.DB, id int, voucherID string) {
 	query := fmt.Sprintf(`
 						UPDATE Vouchers
-						SET redeem = 1
+						SET redeem = 1, time_updated = '%s'
 						WHERE user_id = '%d' AND voucher_id = '%s'
-						`, id, voucherID)
+						`, time.Now().Format(YYYYMMDDhhmmss), id, voucherID)
 	_, err := db.Query(query)
 	if err != nil {
 		log.Panicln(err.Error())
@@ -420,13 +445,24 @@ func validVoucher(db *sql.DB, id int, voucherID string) (int, bool) {
 }
 
 func AddVoucher(db *sql.DB, phone string, voucherID string, amount int, points int) (int, string, int, int) {
+
+	var wg sync.WaitGroup
+
+	defer wg.Wait()
+
 	userID := getUserID(db, phone)
-	addVoucherUser(db, userID, voucherID, amount)
-	updateUserPoints(db, userID, points, true)
+
+	wg.Add(2)
+	go addVoucherUser(db, userID, voucherID, amount, &wg)
+	go updateUserPoints(db, userID, points, true, &wg)
+
 	return userID, voucherID, amount, points
 }
 
-func addVoucherUser(db *sql.DB, id int, voucherID string, amount int) {
+func addVoucherUser(db *sql.DB, id int, voucherID string, amount int, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
 	query := fmt.Sprintf(`
 						INSERT INTO Vouchers
 						(user_id, voucher_amt, voucher_id) VALUES
