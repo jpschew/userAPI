@@ -19,7 +19,7 @@ CREATE TABLE Users (
     last_login DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 INSERT INTO Users (phone, name, password, points) VALUES
-("81234567", "Jasper", "$2a$04$SrFrs7IIu6phdhfNV0BTpuQoDEuoO53rC7TAzvRINh./To15u8El6", 200);
+("81234567", "Jasper", "$2a$04$cNkuX2mhC4YtEcvkogWPR.S7QpWwv5Txyhh9i7gZnDB7FrSRFohAK", 200);
 
 CREATE TABLE Items (
     id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
