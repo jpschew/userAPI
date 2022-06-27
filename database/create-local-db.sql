@@ -20,6 +20,13 @@ CREATE TABLE Users (
 );
 INSERT INTO Users (phone, name, password, points) VALUES
 ("81234567", "Jasper", "$2a$04$cNkuX2mhC4YtEcvkogWPR.S7QpWwv5Txyhh9i7gZnDB7FrSRFohAK", 200);
+-- added more entry for users
+INSERT INTO Users (phone, name, password, points) VALUES
+("82234567", "Quek Qi", "$2a$04$A8nk4nE32ViV64LgzxPw4.BBRERpe0Z4VQSzcTl0CxjmgLT3zrdDW", 120);
+INSERT INTO Users (phone, name, password, points) VALUES
+("91234567", "Dylan Kiew", "$2a$04$9Q.Bx4c1kSorj8tmQ/lLmum3eG0ZX/Xkr8zfAjsiFHBe59BBNBtai", 100);
+INSERT INTO Users (phone, name, password, points) VALUES
+("92234567", "William Neo", "$2a$04$73GZOU7d6I.7dI6DxV8jSOhe73z51ONH0dcDpzXmnvqkQdVkDmG8O", 150);
 
 CREATE TABLE Items (
     id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -39,6 +46,23 @@ CREATE TABLE Transactions (
 );
 INSERT INTO Transactions (user_id, item_id, weight) VALUES (1, 2, 500);
 INSERT INTO Transactions (user_id, item_id, weight) VALUES (1, 3, 760);
+-- added more entry for transactions
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (1, 2, 200);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (1, 3, 460);
+-- user 2
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (2, 1, 200);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (2, 4, 460);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (2, 1, 200);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (2, 4, 460);
+-- user 3
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (3, 4, 200);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (3, 3, 460);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (3, 4, 200);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (3, 3, 460);
+-- user 4
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (4, 1, 200);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (4, 1, 460);
+INSERT INTO Transactions (user_id, item_id, weight) VALUES (4, 1, 300);
 
 CREATE TABLE Vouchers (
     id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
