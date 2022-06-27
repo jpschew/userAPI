@@ -26,7 +26,9 @@ func main() {
 	router.HandleFunc("/api/v1/addvoucher", api.AddUserVoucher).Methods("POST")
 	// check voucher status of an user using voucher id
 	router.HandleFunc("/api/v1/checkvoucher", api.VoucherStatus).Methods("POST")
-	// redeem voucher of an user
+	// get all valid voucher of a user
+	router.HandleFunc("/api/v1/getvalidvoucher", api.GetUserValidVoucher).Methods("POST")
+	// redeem voucher of a user
 	router.HandleFunc("/api/v1/redeemvoucher", api.RedeemVoucher).Methods("PUT")
 
 	// get all users

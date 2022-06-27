@@ -63,10 +63,10 @@ func AddUpdateKey(res http.ResponseWriter, req *http.Request) {
 
 					//database.AddUpdateKey(db, newKey.Phone, newKey.APIKey)
 					//userAPI[newKey.Phone] = newKey.APIKey
-					acceptedStatusJSON(res, true, "API key updated.", make(map[string]interface{}))
+					okStatusJSON(res, true, "API key updated.", make(map[string]interface{}))
 				} else {
 					database.AddKey(db, newKey.Username, newKey.APIKey)
-					acceptedStatusJSON(res, true, "API key added.", make(map[string]interface{}))
+					okStatusJSON(res, true, "API key added.", make(map[string]interface{}))
 
 					//notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
 				}

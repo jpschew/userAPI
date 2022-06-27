@@ -30,6 +30,12 @@ type Transactions struct {
 	TransDate time.Time
 }
 
+type RedeemVoucherInfo struct {
+	UserID   int            `json:"userID"`
+	Vouchers map[string]int `json:"vouchers"`
+	Amount   int            `json:"amount"`
+}
+
 const (
 	YYYYMMDDhhmmss = "2006-01-02 15:04:05"
 )
@@ -522,4 +528,49 @@ func AddKey(db *sql.DB, username string, apiKey string) {
 	if err != nil {
 		log.Panicln(err.Error())
 	}
+}
+
+func GetUserValidVoucher(db *sql.DB, phone string) RedeemVoucherInfo {
+	userID := getUserID(db, phone)
+	return getValidVoucher(db, userID)
+}
+
+func getValidVoucher(db *sql.DB, userID int) RedeemVoucherInfo {
+
+	var voucherInfo RedeemVoucherInfo
+
+	voucherInfo.Vouchers = make(map[string]int)
+
+	info := struct {
+		vID string
+		amt int
+	}{}
+
+	query := fmt.Sprintf(`
+								SELECT user_id, voucher_id, voucher_amt
+								FROM Vouchers
+								WHERE redeem = 1 AND user_id = '%d'
+								`, userID)
+
+	if results, err := db.Query(query); err != nil {
+		log.Panicln(err.Error())
+	} else {
+		for results.Next() {
+			// Scan() copy each row of data from db and assign to the address specified
+			err = results.Scan(&voucherInfo.UserID, &info.vID, &info.amt)
+			if err != nil {
+				log.Panicln(err.Error())
+			}
+
+			voucherInfo.Amount += info.amt
+			voucherInfo.Vouchers[info.vID] = info.amt
+
+		}
+		//fmt.Println(voucherInfo.UserID)
+		if voucherInfo.UserID == 0 { // means no records
+			voucherInfo.UserID = userID
+		}
+	}
+
+	return voucherInfo
 }

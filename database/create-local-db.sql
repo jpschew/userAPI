@@ -72,6 +72,9 @@ CREATE TABLE Vouchers (
     redeem int DEFAULT 0,
     time_updated DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+-- added entry for Vouchers
+INSERT INTO Vouchers (user_id, voucher_amt, voucher_id, redeem) VALUES (1, 20, "0fd5062eccc4b049f0ba75ca31db3a4c53253bb9fe3addf3332sfgd81307aa2", 1);
+INSERT INTO Vouchers (user_id, voucher_amt, voucher_id, redeem) VALUES (1, 20, "0fd5062eccc4b049f0ba75ca31db3a4c53253bb9fe3addf3332sfgd81307bbb", 1);
 
 CREATE TABLE Api (
     id int NOT NULL AUTO_INCREMENT PRIMARY KEY,

@@ -221,7 +221,7 @@ func RetrieveUserPoints(res http.ResponseWriter, req *http.Request) {
 					data["userID"] = userID
 					data["points"] = points
 
-					acceptedStatusJSON(res, true, "Points retrieved.", data)
+					okStatusJSON(res, true, "Points retrieved.", data)
 				} else {
 					notFoundStatusJSON(res, false, "User not found.", data)
 				}
@@ -308,7 +308,7 @@ func VoucherStatus(res http.ResponseWriter, req *http.Request) {
 					data["voucherID"] = vID
 					data["redeemed"] = redeem
 
-					acceptedStatusJSON(res, true, "Retrieved voucher status.", data)
+					okStatusJSON(res, true, "Retrieved voucher status.", data)
 				} else {
 					notFoundStatusJSON(res, false, "User not found.", data)
 				}
@@ -400,7 +400,7 @@ func RedeemVoucher(res http.ResponseWriter, req *http.Request) {
 					data["voucherID"] = info.VoucherID
 					data["redeemed"] = true
 
-					acceptedStatusJSON(res, true, "Voucher redeemed.", data)
+					okStatusJSON(res, true, "Voucher redeemed.", data)
 
 				} else {
 					notFoundStatusJSON(res, false, "User not found.", data)
@@ -492,7 +492,7 @@ func AddUserVoucher(res http.ResponseWriter, req *http.Request) {
 					data["amount"] = amount
 					data["pointsExchange"] = points
 
-					acceptedStatusJSON(res, true, "Voucher added.", data)
+					okStatusJSON(res, true, "Voucher added.", data)
 				} else {
 					notFoundStatusJSON(res, false, "User not found.", data)
 				}
@@ -610,7 +610,7 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 
 					data[uID] = uTrans[uID]
 
-					acceptedStatusUser(res, true, msg, data)
+					okStatusUser(res, true, msg, data)
 				}
 
 			}
@@ -636,7 +636,7 @@ func GetAllTransactions(res http.ResponseWriter, req *http.Request) {
 				if (page*records)+1 == (page*records)+len(trans) {
 					msg = fmt.Sprintf("Get transaction id %d.", (page*records)+1)
 				}
-				acceptedStatusAllTransactions(res, true, msg, trans)
+				okStatusAllTransactions(res, true, msg, trans)
 			}
 		}
 	}
@@ -709,7 +709,7 @@ func GetAllUsers(res http.ResponseWriter, req *http.Request) {
 				msg = fmt.Sprintf("Get user id %d.", (page*records)+1)
 			}
 
-			acceptedStatusAllUsers(res, true, msg, users)
+			okStatusAllUsers(res, true, msg, users)
 		}
 	}
 }
@@ -789,5 +789,93 @@ func AddUser(res http.ResponseWriter, req *http.Request) {
 	} else { // content type not json
 
 		notAcceptableStatusJSON(res, false, "Content-type is not JSON format for POST/PUT method.", data)
+	}
+}
+
+func GetUserValidVoucher(res http.ResponseWriter, req *http.Request) {
+
+	// check for valid api key
+	returnMsg, validAPI := validKey(req)
+
+	if !validAPI { // if API is invalid, return error msg
+		notFoundStatusJSON(res, false, returnMsg, make(map[string]interface{}))
+		return
+	}
+
+	//var results []map[int]database.UserInfo
+	//users := make(map[int]database.UserInfo)
+	var data database.RedeemVoucherInfo
+
+	data.Vouchers = make(map[string]int, 0)
+
+	//// Vars returns the route variables for the current request, if any from the gorilla mux
+	//// return a map with key string and value string
+	//// params is a map with key(userid, itemid) as string and value(specified in url) as string
+	//params := mux.Vars(req)
+
+	// get the header from request
+	// check if body is in json format
+	// use Content-Type to check for the resource type
+	// for POST and PUT, information is sent via the request body
+	if req.Header.Get("Content-Type") == "application/json" {
+
+		if req.Method == "POST" {
+			//if params["userid"] != "" { // userid exists in url
+			// check if value is integer
+			//if uID, err := strconv.Atoi(params["userid"]); err != nil {
+			//	badRequestStatusVoucher(res, false, "User id need to be integer.", data)
+			//	return
+			//} else { // if value is integer
+
+			db := database.CreateDBConn(sqlDriver, dsn, dbName)
+			defer db.Close()
+
+			//if database.CheckValidUser(db, uID) {
+			// close the request body at the end of the function after reading
+			defer req.Body.Close()
+
+			// read in data from request body
+			if reqBody, err := io.ReadAll(req.Body); err != nil { // error when reading request body
+				//fmt.Println("body error")
+				unprocessableEntityStatus(res)
+			} else { // no error when reading request body
+
+				info := struct {
+					Phone string `json:"phone"`
+				}{}
+				json.Unmarshal(reqBody, &info)
+				//fmt.Println(info.Phone)
+
+				// check if phone number is valid
+				if !validPhoneNum(info.Phone) {
+					unprocessableEntityStatusVoucher(res, false,
+						"Phone must be 8 digits integer or starts with 8 or 9.", data)
+					return
+				}
+
+				var msg string
+
+				// if phone number exists in userMap
+				if _, ok := usersMap[info.Phone]; !ok { // user not found
+					msg = fmt.Sprintf("User not Found")
+					notFoundStatusJSON(res, false, "User not found.", make(map[string]interface{}))
+
+				} else { // existing user, get voucher
+
+					// get valid vouchers from database
+					data = database.GetUserValidVoucher(db, info.Phone)
+
+					if len(data.Vouchers) == 0 {
+						msg = fmt.Sprintf("No voucher redeemed for userID %d", data.UserID)
+					} else {
+						msg = fmt.Sprintf("Retrieve vouchers redeemed for userID %d", data.UserID)
+					}
+					okStatusVoucher(res, true, msg, data)
+				}
+			}
+		}
+	} else { // content type not json
+
+		notAcceptableStatusJSON(res, false, "Content-type is not JSON format for POST/PUT method.", make(map[string]interface{}))
 	}
 }
